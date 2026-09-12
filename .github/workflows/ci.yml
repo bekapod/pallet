@@ -42,6 +42,14 @@ jobs:
           tar -xzf gbdk.tar.gz -C "$HOME"
           echo "GBDK_HOME=$HOME/gbdk/" >> "$GITHUB_ENV"
 
+      - name: Install hUGETracker converter
+        run: |
+          curl -fsSL -o hugetracker.zip "https://github.com/SuperDisk/hUGETracker/releases/download/v1.0.11/hUGETracker-1.0.11-linux.zip"
+          echo "9e2e21d50d2ebbeb5653168c483279b188ff1b01b908b685172b0b353e506e24  hugetracker.zip" | sha256sum -c
+          mkdir -p "$HOME/.local/bin"
+          unzip -q hugetracker.zip uge2source -d "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Install uv
         uses: astral-sh/setup-uv@v10.0.1
         with:

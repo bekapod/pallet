@@ -4,7 +4,9 @@ ROM ?= game
 GBDK_HOME ?= $(HOME)/gbdk/
 LCC := $(GBDK_HOME)/bin/lcc
 PNG2ASSET := $(GBDK_HOME)/bin/png2asset
+UGE2SOURCE ?= uge2source
 LCCFLAGS ?= -debug -Wl-j -Wm-yS -Wl-yt1 -Wl-yo2 -Wl-ya0
+HUGE_DRIVER_LIB := $(ENGINE)third_party/hUGEDriver/gbdk/hUGEDriver.lib
 GAME_SOURCES := $(wildcard src/*.c)
 GAME_HEADERS := $(wildcard src/*.h)
 ENGINE_SOURCES := $(wildcard $(ENGINE)src/*.c)
@@ -14,12 +16,13 @@ MAP_PNGS := $(wildcard art/*_map.png)
 FULLSCREEN_PNGS := $(wildcard art/*_screen.png)
 SHEET_PNGS := $(filter-out $(MAP_PNGS) $(FULLSCREEN_PNGS),$(wildcard art/*.png))
 RESOURCE_SOURCES := $(patsubst art/%.png,res/%.c,$(wildcard art/*.png))
+MUSIC_SOURCES := $(patsubst music/%.uge,res/%.c,$(wildcard music/*.uge))
 
 .PHONY: all
 all: $(BUILD)/$(ROM).gb
 
-$(BUILD)/$(ROM).gb: $(GAME_SOURCES) $(GAME_HEADERS) $(ENGINE_SOURCES) $(ENGINE_HEADERS) $(RESOURCE_SOURCES) | $(BUILD)
-	$(LCC) $(LCCFLAGS) -I$(ENGINE)include -o $@ $(GAME_SOURCES) $(ENGINE_SOURCES) $(RESOURCE_SOURCES)
+$(BUILD)/$(ROM).gb: $(GAME_SOURCES) $(GAME_HEADERS) $(ENGINE_SOURCES) $(ENGINE_HEADERS) $(RESOURCE_SOURCES) $(MUSIC_SOURCES) | $(BUILD)
+	$(LCC) $(LCCFLAGS) -I$(ENGINE)include -I$(ENGINE)third_party/hUGEDriver/include -Wl-l$(HUGE_DRIVER_LIB) -o $@ $(GAME_SOURCES) $(ENGINE_SOURCES) $(RESOURCE_SOURCES) $(MUSIC_SOURCES)
 
 $(patsubst art/%.png,res/%.c,$(MAP_PNGS)): res/%.c: art/%.png art/tileset.png | res
 	$(PNG2ASSET) $< -o $@ -map -source_tileset art/tileset.png -noflip -keep_palette_order -no_palettes > $@.log 2>&1 || { cat $@.log; false; }
@@ -30,6 +33,9 @@ $(patsubst art/%.png,res/%.c,$(SHEET_PNGS)): res/%.c: art/%.png | res
 
 $(patsubst art/%.png,res/%.c,$(FULLSCREEN_PNGS)): res/%.c: art/%.png | res
 	$(PNG2ASSET) $< -o $@ -map -noflip -keep_palette_order -no_palettes
+
+$(MUSIC_SOURCES): res/%.c: music/%.uge | res
+	$(UGE2SOURCE) $< $* $@
 
 res:
 	mkdir -p $@
