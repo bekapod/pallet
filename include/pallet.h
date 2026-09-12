@@ -6,5 +6,6 @@
 #include "input.h"
 #include "music.h"
 #include "sfx.h"
+#include "text.h"
 
 #endif
