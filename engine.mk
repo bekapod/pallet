@@ -27,6 +27,12 @@ SHEET_PNGS := $(filter-out $(MAP_PNGS) $(FULLSCREEN_PNGS),$(wildcard art/*.png))
 RESOURCE_SOURCES := $(patsubst art/%.png,res/%.c,$(wildcard art/*.png))
 MUSIC_SOURCES := $(patsubst music/%.uge,res/%.c,$(wildcard music/*.uge))
 
+BINJGB_REV := c60e138da5a795ebb55e56b11b7e90024e41112c
+BINJGB_DIR := $(ENGINE)third_party/binjgb/web
+BINJGB_PALETTE ?= 83
+WEB_DIR := $(BUILD)/web
+WEB_ZIP := $(BUILD)/$(ROM)-web.zip
+
 .PHONY: all setup
 all: $(BUILD)/$(ROM).gb
 
@@ -65,6 +71,36 @@ $(BUILD):
 .PHONY: test
 test: all
 	ROM_NAME=$(ROM) uv run --project tests pytest tests
+
+.PHONY: FORCE web
+FORCE:
+
+web: $(WEB_ZIP)
+
+$(WEB_DIR): | $(BUILD)
+	mkdir -p $@
+
+$(WEB_DIR)/binjgb.js: $(BINJGB_DIR)/binjgb.js | $(WEB_DIR)
+	cp $< $@
+
+$(WEB_DIR)/binjgb.wasm: $(BINJGB_DIR)/binjgb.wasm | $(WEB_DIR)
+	cp $< $@
+
+$(WEB_DIR)/pallet-web.js: $(BINJGB_DIR)/pallet-web.js FORCE | $(WEB_DIR)
+	sed -e 's/__ROM_FILENAME__/$(ROM).gb/' \
+	    -e 's/const DEFAULT_PALETTE_IDX = 79;/const DEFAULT_PALETTE_IDX = $(BINJGB_PALETTE);/' \
+	    $< > $@
+
+$(WEB_DIR)/pallet-web.css: $(BINJGB_DIR)/pallet-web.css | $(WEB_DIR)
+	cp $< $@
+
+$(WEB_DIR)/index.html: $(ENGINE)web/index.html FORCE | $(WEB_DIR)
+	sed 's/__ROM_FILENAME__/$(ROM).gb/g' $< > $@
+
+$(WEB_ZIP): $(BUILD)/$(ROM).gb $(WEB_DIR)/binjgb.js $(WEB_DIR)/binjgb.wasm $(WEB_DIR)/pallet-web.js $(WEB_DIR)/pallet-web.css $(WEB_DIR)/index.html
+	find $(WEB_DIR) -maxdepth 1 -name '*.gb' -delete
+	cp $(BUILD)/$(ROM).gb $(WEB_DIR)/$(ROM).gb
+	cd $(WEB_DIR) && zip -q -r ../$(notdir $@) .
 
 .PHONY: clean
 clean:

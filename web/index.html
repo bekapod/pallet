@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Game Boy game</title>
+  <link rel="stylesheet" href="pallet-web.css">
+  <style>
+    #game { align-items: center; justify-content: center; }
+    #game canvas {
+      width: 480px;
+      height: 432px;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <main id="game" aria-label="Game Boy game">
+    <canvas width="160" height="144" aria-label="Game screen">No Canvas Support</canvas>
+    <div id="controller" aria-hidden="true">
+      <div id="controller_dpad">
+        <div id="controller_up"></div>
+        <div id="controller_down"></div>
+        <div id="controller_left"></div>
+        <div id="controller_right"></div>
+      </div>
+      <div id="controller_select" class="capsuleBtn">Select</div>
+      <div id="controller_start" class="capsuleBtn">Start</div>
+      <div id="controller_b" class="roundBtn">B</div>
+      <div id="controller_a" class="roundBtn">A</div>
+    </div>
+  </main>
+  <script src="binjgb.js"></script>
+  <script src="pallet-web.js"></script>
+</body>
+</html>
