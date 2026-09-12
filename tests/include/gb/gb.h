@@ -7,6 +7,10 @@
 #define J_RIGHT 0x01U
 #define J_UP 0x04U
 
+extern uint8_t BGP_REG;
+extern uint8_t OBP0_REG;
+extern uint8_t OBP1_REG;
+
 /* Test-only declaration for the fake joypad supplied by test_modules.c. */
 uint8_t joypad(void);
 
