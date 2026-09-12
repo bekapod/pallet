@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+env:
+  GBDK_VERSION: "4.5.0"
+  GBDK_SHA256: d7857a5f6d135ee4c249043ca26aad9f2ec8ab5d4106d97720d404114f42605c
+
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -14,3 +18,37 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run unit tests
         run: make -C tests test
+
+  ditto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: bekapod/ditto
+          path: ditto
+          submodules: true
+
+      - name: Use this pallet revision in Ditto
+        run: |
+          git -C ditto/engine fetch "$GITHUB_WORKSPACE" "$GITHUB_SHA"
+          git -C ditto/engine checkout --detach "$GITHUB_SHA"
+
+      - name: Install GBDK
+        run: |
+          curl -fsSL -o gbdk.tar.gz "https://github.com/gbdk-2020/gbdk-2020/releases/download/${GBDK_VERSION}/gbdk-linux64.tar.gz"
+          echo "${GBDK_SHA256}  gbdk.tar.gz" | sha256sum -c
+          tar -xzf gbdk.tar.gz -C "$HOME"
+          echo "GBDK_HOME=$HOME/gbdk/" >> "$GITHUB_ENV"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: ditto/tests/uv.lock
+
+      - name: Build and test Ditto
+        run: |
+          make -C ditto
+          make -C ditto test
