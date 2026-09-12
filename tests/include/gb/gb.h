@@ -1,0 +1,13 @@
+#ifndef TEST_GB_H
+#define TEST_GB_H
+
+#include <stdint.h>
+
+/* These are the GBDK joypad bits used by the host test. */
+#define J_RIGHT 0x01U
+#define J_UP 0x04U
+
+/* Test-only declaration for the fake joypad supplied by test_modules.c. */
+uint8_t joypad(void);
+
+#endif
