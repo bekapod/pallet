@@ -896,6 +896,68 @@ static void state_drain(void) {
     state_pop();
 }
 
+/* A transition requested from inside update must wait until the update
+ * callback finishes: the old state runs fully, then the stack changes. */
+static void replacing_update(void) { state_event('u', STATE_BASE); state_replace(&replacement_state); }
+
+static const state_t replacing_state = {
+    base_init, replacing_update, base_draw, base_exit, 0
+};
+
+static void test_state_deferred_and_status(void) {
+    memset(state_init_count, 0, sizeof(state_init_count));
+    memset(state_update_count, 0, sizeof(state_update_count));
+    memset(state_draw_count, 0, sizeof(state_draw_count));
+    memset(state_exit_count, 0, sizeof(state_exit_count));
+
+    assert(state_push(&replacing_state) == PALLET_OK);
+    assert(state_replace(0) == PALLET_BAD_ARGUMENT);
+    state_event_count = 0;
+    state_tick();
+    /* The replace request fired only after the update callback returned. */
+    assert(state_update_count[STATE_BASE] == 1);
+    assert(state_exit_count[STATE_BASE] == 1);
+    assert(state_init_count[STATE_REPLACEMENT] == 1);
+    assert(state_events[0] == 'u');
+    assert(state_events[1] == (char)('e' + STATE_BASE * 4U));
+    assert(state_events[2] == (char)('i' + STATE_REPLACEMENT * 4U));
+
+    /* A plain replace outside update still applies immediately. */
+    state_event_count = 0;
+    assert(state_replace(&base_state) == PALLET_OK);
+    assert(state_exit_count[STATE_REPLACEMENT] == 1);
+    assert(state_init_count[STATE_BASE] == 2);
+
+    /* Capacity: the fifth push fails without side effects. */
+    state_push(&overlay_state);
+    state_push(&replacement_state);
+    state_push(&opaque_state);
+    assert(state_push(&extra_state) == PALLET_FULL);
+    assert(state_init_count[STATE_EXTRA] == 0);
+    state_drain();
+    state_drain();
+
+    /* Faded replace: fade out runs, then the stack swaps, then fade in. */
+    memset(state_init_count, 0, sizeof(state_init_count));
+    memset(state_exit_count, 0, sizeof(state_exit_count));
+    state_push(&base_state);
+    assert(state_replace_faded(&replacement_state, 1) == PALLET_OK);
+    assert(fade_active);
+    assert(state_init_count[STATE_REPLACEMENT] == 0);
+    while (fade_active) {
+        fade_tick();
+        state_tick();
+    }
+    assert(state_exit_count[STATE_BASE] == 1);
+    assert(state_init_count[STATE_REPLACEMENT] == 1);
+    while (fade_active) {
+        fade_tick();
+        state_tick();
+    }
+    assert(!fade_active);
+    state_drain();
+}
+
 static void test_state_stack(void) {
     memset(state_init_count, 0, sizeof(state_init_count));
     memset(state_update_count, 0, sizeof(state_update_count));
@@ -1095,6 +1157,7 @@ int main(void) {
     test_timer();
     test_fixed_point();
     test_hit();
+    test_state_deferred_and_status();
     test_state_stack();
     return 0;
 }

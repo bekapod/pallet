@@ -1,36 +1,70 @@
 #include "state.h"
 
+#include "fade.h"
+
 static const state_t *stack[STATE_STACK_CAPACITY];
 static uint8_t depth;
+static uint8_t in_update;
+static const state_t *pending_state;
+static uint8_t pending_faded_frames; /* 0 = plain replace. */
 
-void state_push(const state_t *state) {
-    if (!state || depth >= STATE_STACK_CAPACITY)
-        return;
+static void apply_pending(void) {
+    uint8_t fade_frames = pending_faded_frames;
+
+    state_pop();
+    if (state_push(pending_state) == PALLET_OK && fade_frames)
+        fade_in(fade_frames);
+    pending_state = 0;
+    pending_faded_frames = 0;
+}
+
+pallet_status_t state_push(const state_t *state) {
+    if (!state)
+        return PALLET_BAD_ARGUMENT;
+    if (depth >= STATE_STACK_CAPACITY)
+        return PALLET_FULL;
 
     stack[depth++] = state;
     if (state->init)
         state->init();
+    return PALLET_OK;
 }
 
-void state_pop(void) {
+pallet_status_t state_pop(void) {
     const state_t *state;
 
     if (depth == 0)
-        return;
+        return PALLET_EMPTY;
 
     state = stack[depth - 1];
     if (state->exit)
         state->exit();
     depth--;
+    return PALLET_OK;
 }
 
-void state_replace(const state_t *state) {
+pallet_status_t state_replace(const state_t *state) {
     if (!state)
-        return;
+        return PALLET_BAD_ARGUMENT;
+    if (in_update) {
+        pending_state = state;
+        pending_faded_frames = 0;
+        return PALLET_OK;
+    }
 
-    if (depth != 0)
-        state_pop();
-    state_push(state);
+    state_pop();
+    return state_push(state);
+}
+
+pallet_status_t state_replace_faded(const state_t *state,
+                                    uint8_t frames_per_step) {
+    if (!state)
+        return PALLET_BAD_ARGUMENT;
+    if (fade_out(frames_per_step) != PALLET_OK)
+        return PALLET_BUSY;
+    pending_state = state;
+    pending_faded_frames = frames_per_step ? frames_per_step : 1;
+    return PALLET_OK;
 }
 
 void state_tick(void) {
@@ -40,9 +74,18 @@ void state_tick(void) {
     if (depth == 0)
         return;
 
+    /* While a faded replace waits for its fade-out, gameplay pauses. */
+    if (pending_state && pending_faded_frames && fade_active)
+        return;
+
     updating = stack[depth - 1];
+    in_update = 1;
     if (updating->update)
         updating->update();
+    in_update = 0;
+
+    if (pending_state)
+        apply_pending();
 
     first_draw = depth - 1;
     while (first_draw != 0 && stack[first_draw]->draw_under)

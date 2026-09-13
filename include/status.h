@@ -6,5 +6,8 @@ typedef uint8_t pallet_status_t;
 
 #define PALLET_OK   0
 #define PALLET_BUSY 1
+#define PALLET_FULL 2
+#define PALLET_EMPTY 3
+#define PALLET_BAD_ARGUMENT 4
 
 #endif
