@@ -20,7 +20,7 @@
 void text_init(const uint8_t *font_tiles);
 void text_vblank(void);
 
-/* Queue text for the background tile map; text_vblank() applies it. */
+/* Queue text for the background tile map; bg_flush() applies it. */
 void text_print(uint8_t x, uint8_t y, const char *text);
 
 /* Queue text for the window tile map; text_vblank() applies it. */

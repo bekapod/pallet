@@ -29,6 +29,8 @@ extern uint8_t test_ram_enabled;
 
 void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data);
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile);
+void set_bkg_tiles(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                   const uint8_t *tiles);
 uint8_t *set_win_tile_xy(uint8_t x, uint8_t y, uint8_t tile);
 void move_win(uint8_t x, uint8_t y);
 void set_sprite_tile(uint8_t sprite, uint8_t tile);

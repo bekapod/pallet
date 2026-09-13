@@ -1,13 +1,13 @@
 #include <gb/gb.h>
 #include <stdint.h>
 
+#include "bg.h"
 #include "text.h"
 
 typedef struct {
     uint8_t x;
     uint8_t y;
     uint8_t tile;
-    uint8_t window;
 } text_write_t;
 
 static text_write_t writes[TEXT_QUEUE_CAPACITY];
@@ -39,13 +39,17 @@ static uint8_t glyph_tile(char character) {
 }
 
 static void queue_tile(uint8_t x, uint8_t y, uint8_t tile, uint8_t window) {
+    if (!window) {
+        bg_put(x, y, tile);
+        return;
+    }
+
     if (write_count == TEXT_QUEUE_CAPACITY)
         return;
 
     writes[write_count].x = x;
     writes[write_count].y = y;
     writes[write_count].tile = tile;
-    writes[write_count].window = window;
     write_count++;
 }
 
@@ -58,14 +62,8 @@ void text_init(const uint8_t *font_tiles) {
 void text_vblank(void) {
     uint8_t index;
 
-    for (index = 0; index < write_count; index++) {
-        if (writes[index].window)
-            set_win_tile_xy(writes[index].x, writes[index].y,
-                            writes[index].tile);
-        else
-            set_bkg_tile_xy(writes[index].x, writes[index].y,
-                            writes[index].tile);
-    }
+    for (index = 0; index < write_count; index++)
+        set_win_tile_xy(writes[index].x, writes[index].y, writes[index].tile);
 
     write_count = 0;
 }
