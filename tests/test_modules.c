@@ -16,6 +16,7 @@
 #include "state.h"
 #include "spr.h"
 #include "text.h"
+#include "timer.h"
 
 uint8_t BGP_REG;
 uint8_t OBP0_REG;
@@ -540,9 +541,24 @@ static void test_menu_navigation_and_flags(void) {
     assert(menu_tick_with(0) == MENU_NONE);
     assert(menu_tick_with(J_DOWN) == MENU_NONE);
     assert(menu_selected() == 1);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_LEFT) == MENU_NONE);
+    assert(menu_selected() == 0);
+    for (frame = 0; frame < 14; frame++)
+        assert(menu_tick_with(J_LEFT) == MENU_NONE);
+    assert(menu_selected() == 0);
+    assert(menu_tick_with(J_LEFT) == MENU_NONE);
+    assert(menu_selected() == 2);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 0);
     for (frame = 0; frame < 14; frame++)
         assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 0);
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
     assert(menu_selected() == 1);
+    for (frame = 0; frame < 5; frame++)
+        assert(menu_tick_with(J_DOWN) == MENU_NONE);
     assert(menu_tick_with(J_DOWN) == MENU_NONE);
     assert(menu_selected() == 2);
 
@@ -607,21 +623,30 @@ static void test_input_repeat(void) {
     joypad_value = 0;
     input_update();
     assert(input_repeat(J_RIGHT, 15, 6) == 0);
-    joypad_value = J_RIGHT;
+    assert(input_repeat(J_A, 15, 6) == 0);
+    assert(input_repeat(J_RIGHT | J_LEFT, 15, 6) == 0);
+    joypad_value = J_RIGHT | J_LEFT;
     input_update();
     assert(input_repeat(J_RIGHT, 15, 6) == 1);
+    assert(input_repeat(J_LEFT, 15, 6) == 1);
     for (frame = 0; frame < 14; frame++) {
         input_update();
         assert(input_repeat(J_RIGHT, 15, 6) == 0);
+        assert(input_repeat(J_LEFT, 15, 6) == 0);
     }
     input_update();
     assert(input_repeat(J_RIGHT, 15, 6) == 1);
-    for (frame = 0; frame < 5; frame++) {
+    assert(input_repeat(J_LEFT, 15, 6) == 1);
+    joypad_value = 0;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    joypad_value = J_RIGHT;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 0) == 1);
+    for (frame = 0; frame < 20; frame++) {
         input_update();
-        assert(input_repeat(J_RIGHT, 15, 6) == 0);
+        assert(input_repeat(J_RIGHT, 15, 0) == 0);
     }
-    input_update();
-    assert(input_repeat(J_RIGHT, 15, 6) == 1);
 }
 
 enum {
@@ -769,29 +794,71 @@ static void test_state_stack(void) {
 }
 
 static void test_input_edges(void) {
+    uint16_t frame;
+
     input_held = 0;
     input_pressed = 0;
     input_released = 0;
+    joypad_value = 0;
+    input_update();
 
     /* Start with two buttons down: right and up. */
-    joypad_value = J_RIGHT | J_UP;
+    joypad_value = J_A | J_B | J_RIGHT | J_UP;
     input_update();
-    assert(input_held == (J_RIGHT | J_UP));
-    assert(input_pressed == (J_RIGHT | J_UP));
+    assert(input_held_frames(J_A) == 1);
+    assert(input_held_frames(J_B) == 1);
+    assert(input_held_frames(J_A | J_B) == 0);
+    assert(input_held == (J_A | J_B | J_RIGHT | J_UP));
+    assert(input_pressed == (J_A | J_B | J_RIGHT | J_UP));
     assert(input_released == 0);
 
     /* Keep up held and release right. */
-    joypad_value = J_UP;
+    joypad_value = J_A | J_UP;
     input_update();
-    assert(input_held == J_UP);
+    assert(input_held_frames(J_A) == 2);
+    assert(input_held_frames(J_B) == 0);
+    assert(input_held == (J_A | J_UP));
     assert(input_pressed == 0);
-    assert(input_released == J_RIGHT);
+    assert(input_released == (J_B | J_RIGHT));
 
     /* Release the remaining up button. */
     joypad_value = 0;
     input_update();
+    assert(input_held_frames(J_A) == 0);
+    assert(input_held_frames(J_B) == 0);
     assert(input_pressed == 0);
-    assert(input_released == J_UP);
+    assert(input_released == (J_A | J_UP));
+
+    joypad_value = J_A;
+    input_update();
+    for (frame = 1; frame < 300; frame++)
+        input_update();
+    assert(input_held_frames(J_A) == UINT8_MAX);
+}
+
+static void test_timer(void) {
+    timer_t timer;
+    uint8_t frame;
+
+    timer_start(&timer, 60);
+    for (frame = 1; frame < 60; frame++)
+        assert(timer_tick(&timer) == 0);
+    assert(timer_tick(&timer) == 1);
+    for (frame = 1; frame < 60; frame++)
+        assert(timer_tick(&timer) == 0);
+    assert(timer_tick(&timer) == 1);
+    timer_start(&timer, 1);
+    assert(timer_tick(&timer) == 1);
+    assert(timer_tick(&timer) == 1);
+    timer_start(&timer, 3);
+    timer_tick(&timer);
+    timer_reset(&timer);
+    assert(timer_tick(&timer) == 0);
+    assert(timer_tick(&timer) == 0);
+    assert(timer_tick(&timer) == 1);
+    timer_start(&timer, 0);
+    for (frame = 0; frame < 10; frame++)
+        assert(timer_tick(&timer) == 0);
 }
 
 int main(void) {
@@ -809,6 +876,7 @@ int main(void) {
     test_menu_parent_stack();
     test_input_edges();
     test_input_repeat();
+    test_timer();
     test_state_stack();
     return 0;
 }

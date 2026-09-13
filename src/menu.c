@@ -120,20 +120,24 @@ void menu_open_ex(const char *const *items, const uint8_t *flags,
 
 uint8_t menu_tick(void) {
     uint8_t up;
+    uint8_t left;
     uint8_t down;
+    uint8_t right;
 
     if (!menu_depth)
         return MENU_NONE;
 
     up = input_repeat(J_UP, 15U, 6U);
+    left = input_repeat(J_LEFT, 15U, 6U);
     down = input_repeat(J_DOWN, 15U, 6U);
-    if (up) {
+    right = input_repeat(J_RIGHT, 15U, 6U);
+    if (up || left) {
         if (active_menu.selected)
             active_menu.selected--;
         else
             active_menu.selected = active_menu.item_count - 1U;
         move_cursor();
-    } else if (down) {
+    } else if (down || right) {
         active_menu.selected++;
         if (active_menu.selected == active_menu.item_count)
             active_menu.selected = 0;
@@ -158,6 +162,14 @@ uint8_t menu_tick(void) {
     }
 
     return MENU_NONE;
+}
+
+void menu_close(void) {
+    if (!menu_depth)
+        return;
+    clear_menu(&active_menu);
+    menu_depth = 0;
+    hide_menu();
 }
 
 uint8_t menu_selected(void) {

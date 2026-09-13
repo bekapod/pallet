@@ -27,8 +27,11 @@ void menu_open(const char *const *items, uint8_t item_count, uint8_t x,
 void menu_open_ex(const char *const *items, const uint8_t *flags,
                   uint8_t item_count, uint8_t x, uint8_t y);
 
-/* Process one frame of input and return one of MENU_* result codes. */
+/* Process one frame of input. D-pad directions move through the items. */
 uint8_t menu_tick(void);
+
+/* Close the active menu and release its cursor. */
+void menu_close(void);
 
 /* Return the selected item in the active menu, or 0 when none is open. */
 uint8_t menu_selected(void);
