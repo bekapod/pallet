@@ -56,6 +56,8 @@ static void queue_tile(uint8_t x, uint8_t y, uint8_t tile, uint8_t window) {
 void text_init(const uint8_t *font_tiles) {
     set_bkg_data(TEXT_EMPTY_TILE, 1, empty_tile);
     set_bkg_data(TEXT_TILE_BASE, TEXT_FONT_TILES, font_tiles);
+    set_sprite_data(TEXT_CURSOR_TILE, 1U,
+                    font_tiles + (TEXT_FONT_TILES - 1U) * 16U);
     write_count = 0;
 }
 

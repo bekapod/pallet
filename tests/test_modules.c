@@ -38,6 +38,9 @@ uint8_t sprite_props[40];
 uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
+uint8_t sprite_data_start;
+uint8_t sprite_data_count;
+const uint8_t *sprite_data;
 
 void sfx_tick(void) {
 }
@@ -46,6 +49,13 @@ void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
     font_start = first_tile;
     font_count = nb_tiles;
     font_data = data;
+}
+
+void set_sprite_data(uint8_t first_tile, uint8_t nb_tiles,
+                     const uint8_t *data) {
+    sprite_data_start = first_tile;
+    sprite_data_count = nb_tiles;
+    sprite_data = data;
 }
 
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
@@ -464,6 +474,9 @@ static void test_text(void) {
     assert(font_start == TEXT_TILE_BASE);
     assert(font_count == TEXT_FONT_TILES);
     assert(font_data == font);
+    assert(sprite_data_start == 0xFEU);
+    assert(sprite_data_count == 1U);
+    assert(sprite_data == font + (TEXT_FONT_TILES - 1U) * 16U);
 
     text_print(0, 0, "0aZ!/- >");
     assert(bkg_tiles[0][0] == 0xFF);
@@ -606,7 +619,7 @@ static void test_menu_navigation_and_flags(void) {
     assert(win_tiles[0][1] == font_tile(28)); /* S */
     assert(win_tiles[2][0] == font_tile(FONT_HYPHEN));
     assert(win_x == 31 && win_y == 32);
-    assert(sprite_tiles[0] == font_tile(FONT_GREATER_THAN));
+    assert(sprite_tiles[0] == 0xFEU);
     assert(sprite_x[0] == 32);
     assert(sprite_y[0] == 48);
 

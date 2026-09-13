@@ -15,6 +15,12 @@
 #define TEXT_QUEUE_CAPACITY 64
 #endif
 
+/* Sprite tile reserved for the menu's > cursor. Override before inclusion
+ * when a game reserves this tile for its own sprite data. */
+#ifndef TEXT_CURSOR_TILE
+#define TEXT_CURSOR_TILE 0xFEU
+#endif
+
 #define TEXT_FONT_TILES 40
 
 void text_init(const uint8_t *font_tiles);

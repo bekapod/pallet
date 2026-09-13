@@ -67,7 +67,7 @@ static void draw_menu(void) {
              (uint8_t)(active_menu.y * 8U));
     SHOW_WIN;
     if (cursor_slot != SPR_NONE) {
-        spr_tile(cursor_slot, TEXT_TILE_BASE + 39U);
+        spr_tile(cursor_slot, TEXT_CURSOR_TILE);
         spr_prop(cursor_slot, 0U);
         move_cursor();
     }
