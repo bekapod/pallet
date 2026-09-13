@@ -1,6 +1,8 @@
 #ifndef PALLET_STATUS_H
 #define PALLET_STATUS_H
 
+#include <stdint.h>
+
 /* Shared status codes for bounded Pallet operations. */
 typedef uint8_t pallet_status_t;
 

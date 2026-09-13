@@ -1,6 +1,7 @@
 #include <gb/gb.h>
 #include <stdint.h>
 
+#include "diagnostics.h"
 #include "input.h"
 #include "menu.h"
 #include "spr.h"
@@ -87,10 +88,14 @@ void menu_open(const menu_item_t *items, uint8_t item_count, uint8_t x,
     menu_state_t next = {0};
     uint8_t item;
 
-    if (!items || !item_count || item_count > PALLET_MENU_MAX_ITEMS)
+    if (!items || !item_count || item_count > PALLET_MENU_MAX_ITEMS) {
+        pallet_diag_report(PALLET_BAD_ARGUMENT);
         return;
-    if (menu_depth == 3U)
+    }
+    if (menu_depth == 3U) {
+        pallet_diag_report(PALLET_FULL);
         return;
+    }
 
     next.items = items;
     next.item_count = item_count;

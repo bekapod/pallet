@@ -1,5 +1,7 @@
 #include "state.h"
 
+#include "diagnostics.h"
+
 #include "fade.h"
 
 static const state_t *stack[PALLET_STATE_STACK_CAPACITY];
@@ -21,8 +23,10 @@ static void apply_pending(void) {
 pallet_status_t state_push(const state_t *state) {
     if (!state)
         return PALLET_BAD_ARGUMENT;
-    if (depth >= PALLET_STATE_STACK_CAPACITY)
+    if (depth >= PALLET_STATE_STACK_CAPACITY) {
+        pallet_diag_report(PALLET_FULL);
         return PALLET_FULL;
+    }
 
     stack[depth++] = state;
     if (state->init)

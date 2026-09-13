@@ -16,6 +16,7 @@
 #include "rng.h"
 #include "save.h"
 #include "seq.h"
+#include "diagnostics.h"
 #include "sfx.h"
 #include "status.h"
 #include "shake.h"
@@ -969,6 +970,30 @@ static void test_state_deferred_and_status(void) {
     state_drain();
 }
 
+static void test_diagnostics(void) {
+    pallet_diag_reset();
+    assert(pallet_diag_last() == PALLET_OK);
+
+    /* menu_open failures are silent; diagnostics must surface them. */
+    menu_open(0, 0, 1, 1);
+    assert(pallet_diag_last() == PALLET_BAD_ARGUMENT);
+    assert(pallet_diag_count(PALLET_BAD_ARGUMENT) == 1);
+
+    /* State stack exhaustion gets recorded. */
+    state_push(&base_state);
+    state_push(&overlay_state);
+    state_push(&replacement_state);
+    state_push(&opaque_state);
+    assert(state_push(&extra_state) == PALLET_FULL);
+    assert(pallet_diag_last() == PALLET_FULL);
+    assert(pallet_diag_count(PALLET_FULL) == 1);
+    state_drain();
+
+    pallet_diag_reset();
+    assert(pallet_diag_last() == PALLET_OK);
+    assert(pallet_diag_count(PALLET_FULL) == 0);
+}
+
 static void test_state_stack(void) {
     memset(state_init_count, 0, sizeof(state_init_count));
     memset(state_update_count, 0, sizeof(state_update_count));
@@ -1169,6 +1194,7 @@ int main(void) {
     test_timer();
     test_fixed_point();
     test_hit();
+    test_diagnostics();
     test_state_deferred_and_status();
     test_state_stack();
     return 0;
