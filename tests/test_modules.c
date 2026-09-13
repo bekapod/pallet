@@ -7,6 +7,8 @@
 #include "blink.h"
 #include "fade.h"
 #include "flash.h"
+#include "fx.h"
+#include "hit.h"
 #include "input.h"
 #include "menu.h"
 #include "rng.h"
@@ -942,6 +944,27 @@ static void test_input_edges(void) {
     assert(input_held_frames(J_A) == UINT8_MAX);
 }
 
+static void test_fixed_point(void) {
+    assert(FX(-2) == -512);
+    assert(FX_INT(FX(-2)) == -2);
+    assert(FX_FRAC(FX(-2) + 0x80) == 128);
+    assert(FX_MUL_U8(FX(2), 128) == FX(1));
+    assert(FX_SIGN(-1) == -1);
+    assert(FX_SIGN(0) == 0);
+    assert(FX_SIGN(1) == 1);
+    assert(FX_CLAMP(FX(-2), FX(-1), FX(1)) == FX(-1));
+    assert(FX_CLAMP(FX(0), FX(-1), FX(1)) == FX(0));
+    assert(FX_CLAMP(FX(2), FX(-1), FX(1)) == FX(1));
+}
+
+static void test_hit(void) {
+    assert(hit_aabb(0, 0, 10, 10, 9, 0, 10, 10));
+    assert(!hit_aabb(0, 0, 10, 10, 10, 0, 10, 10));
+    assert(!hit_aabb(0, 0, 10, 10, 20, 0, 10, 10));
+    assert(hit_point_in(10, 20, 10, 20, 8, 8));
+    assert(!hit_point_in(18, 20, 10, 20, 8, 8));
+}
+
 static void test_timer(void) {
     timer_t timer;
     uint8_t frame;
@@ -984,6 +1007,8 @@ int main(void) {
     test_input_edges();
     test_input_repeat();
     test_timer();
+    test_fixed_point();
+    test_hit();
     test_state_stack();
     return 0;
 }
