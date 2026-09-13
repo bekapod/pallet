@@ -16,6 +16,15 @@
 #define SHOW_WIN (LCDC_REG |= 0x20U)
 #define HIDE_WIN (LCDC_REG &= (uint8_t)~0x20U)
 
+/* Test shims for the GBDK interrupt/frame APIs the runtime uses. */
+typedef void (*vbl_fn)(void);
+void add_VBL(vbl_fn fn);
+void vsync(void);
+
+extern uint8_t test_vbl_count;
+extern vbl_fn test_vbl_list[8];
+extern unsigned test_vsync_count;
+
 extern uint8_t BGP_REG;
 extern uint8_t OBP0_REG;
 extern uint8_t SCX_REG;

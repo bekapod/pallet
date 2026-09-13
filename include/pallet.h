@@ -12,6 +12,7 @@
 #include "music.h"
 #include "menu.h"
 #include "rng.h"
+#include "runtime.h"
 #include "save.h"
 #include "state.h"
 #include "sfx.h"

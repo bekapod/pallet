@@ -6,6 +6,7 @@
 #include "bg.h"
 #include "blink.h"
 #include "camera.h"
+#include "runtime.h"
 #include "fade.h"
 #include "flash.h"
 #include "status.h"
@@ -32,6 +33,41 @@ uint8_t OBP1_REG;
 uint8_t LCDC_REG;
 uint8_t SCX_REG;
 uint8_t SCY_REG;
+
+/* GBDK interrupt/frame shims for runtime tests. */
+uint8_t test_vbl_count;
+vbl_fn test_vbl_list[8];
+unsigned test_vsync_count;
+
+void add_VBL(vbl_fn fn) {
+    if (test_vbl_count < 8)
+        test_vbl_list[test_vbl_count++] = fn;
+}
+
+void vsync(void) {
+    test_vsync_count++;
+}
+
+hUGESong_t test_song;
+unsigned test_huge_ticks;
+unsigned test_music_played;
+
+void hUGE_init(const hUGESong_t *song) {
+    (void)song;
+    test_music_played++;
+}
+
+void hUGE_mute_channel(uint8_t channel, uint8_t mode) {
+    (void)channel;
+    (void)mode;
+}
+
+void hUGE_dosound(void) {
+    test_huge_ticks++;
+}
+
+void sfx_init(void) {
+}
 uint8_t fake_sram[8192];
 uint8_t test_ram_enabled;
 uint8_t bkg_tiles[32][32];
@@ -994,6 +1030,60 @@ static void test_diagnostics(void) {
     assert(pallet_diag_count(PALLET_FULL) == 0);
 }
 
+static unsigned vblank_hook_count;
+
+static void vblank_hook(void) {
+    vblank_hook_count++;
+}
+
+static void test_runtime(void) {
+    static const pallet_game_t game = {
+        .initial_state = &base_state,
+        .music = &test_song,
+        .on_vblank = vblank_hook,
+    };
+
+    test_vbl_count = 0;
+    test_vsync_count = 0;
+    test_huge_ticks = 0;
+    test_music_played = 0;
+    vblank_hook_count = 0;
+    memset(state_init_count, 0, sizeof(state_init_count));
+    memset(state_update_count, 0, sizeof(state_update_count));
+
+    /* Boot registers Pallet's VBlank ISR, then music, and starts the
+     * initial state. */
+    pallet_boot(&game);
+    assert(test_vbl_count == 2);
+    assert(test_vbl_list[0] == pallet_vblank_isr);
+    assert(test_vbl_list[1] == hUGE_dosound);
+    assert(test_music_played == 1);
+    assert(state_init_count[STATE_BASE] == 1);
+
+    /* The ISR runs Pallet's camera/palette composition first, then the
+     * consumer's advanced hook. */
+    scroll_set_on_column(0);
+    scroll_set_speed(SCROLL_SPEED_PX(1));
+    scroll_reset(0);
+    scroll_tick();
+    camera_set_y(2);
+    camera_shake(2, 1);
+    pallet_vblank_isr();
+    assert(SCX_REG == (uint8_t)(1 + 1) || SCX_REG == (uint8_t)(1 - 1));
+    assert(SCY_REG == (uint8_t)(2 + 1) || SCY_REG == (uint8_t)(2 - 1));
+    assert(vblank_hook_count == 1);
+
+    /* One frame: input sampled, state updated, drawn, sync once. */
+    state_update_count[STATE_BASE] = 0;
+    state_draw_count[STATE_BASE] = 0;
+    pallet_frame();
+    assert(state_update_count[STATE_BASE] == 1);
+    assert(state_draw_count[STATE_BASE] == 1);
+    assert(test_vsync_count == 1);
+
+    state_pop();
+}
+
 static void test_state_stack(void) {
     memset(state_init_count, 0, sizeof(state_init_count));
     memset(state_update_count, 0, sizeof(state_update_count));
@@ -1196,6 +1286,7 @@ int main(void) {
     test_hit();
     test_diagnostics();
     test_state_deferred_and_status();
+    test_runtime();
     test_state_stack();
     return 0;
 }
