@@ -10,6 +10,7 @@
 #include "menu.h"
 #include "rng.h"
 #include "save.h"
+#include "state.h"
 #include "sfx.h"
 #include "seq.h"
 #include "shake.h"

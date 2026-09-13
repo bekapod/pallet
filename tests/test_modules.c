@@ -13,6 +13,7 @@
 #include "save.h"
 #include "seq.h"
 #include "shake.h"
+#include "state.h"
 #include "text.h"
 
 uint8_t BGP_REG;
@@ -540,6 +541,150 @@ static void test_input_repeat(void) {
     assert(input_repeat(J_RIGHT, 15, 6) == 1);
 }
 
+enum {
+    STATE_BASE,
+    STATE_OVERLAY,
+    STATE_REPLACEMENT,
+    STATE_OPAQUE,
+    STATE_EXTRA
+};
+
+static unsigned state_init_count[5];
+static unsigned state_update_count[5];
+static unsigned state_draw_count[5];
+static unsigned state_exit_count[5];
+static char state_events[32];
+static unsigned state_event_count;
+
+static void state_event(char event, unsigned index) {
+    state_events[state_event_count++] = (char)(event + index * 4U);
+    if (event == 'i')
+        state_init_count[index]++;
+    else if (event == 'u')
+        state_update_count[index]++;
+    else if (event == 'd')
+        state_draw_count[index]++;
+    else
+        state_exit_count[index]++;
+}
+
+#define STATE_CALLBACKS(prefix, index) \
+    static void prefix##_init(void) { state_event('i', index); } \
+    static void prefix##_update(void) { state_event('u', index); } \
+    static void prefix##_draw(void) { state_event('d', index); } \
+    static void prefix##_exit(void) { state_event('e', index); }
+
+STATE_CALLBACKS(base, STATE_BASE)
+STATE_CALLBACKS(overlay, STATE_OVERLAY)
+STATE_CALLBACKS(replacement, STATE_REPLACEMENT)
+STATE_CALLBACKS(opaque, STATE_OPAQUE)
+STATE_CALLBACKS(extra, STATE_EXTRA)
+
+static const state_t base_state = {
+    base_init, base_update, base_draw, base_exit, 0
+};
+static const state_t overlay_state = {
+    overlay_init, overlay_update, overlay_draw, overlay_exit, 1
+};
+static const state_t replacement_state = {
+    replacement_init, replacement_update, replacement_draw, replacement_exit, 0
+};
+static const state_t opaque_state = {
+    opaque_init, opaque_update, opaque_draw, opaque_exit, 0
+};
+static const state_t extra_state = {
+    extra_init, extra_update, extra_draw, extra_exit, 1
+};
+
+static void state_drain(void) {
+    state_pop();
+    state_pop();
+    state_pop();
+    state_pop();
+}
+
+static void test_state_stack(void) {
+    memset(state_init_count, 0, sizeof(state_init_count));
+    memset(state_update_count, 0, sizeof(state_update_count));
+    memset(state_draw_count, 0, sizeof(state_draw_count));
+    memset(state_exit_count, 0, sizeof(state_exit_count));
+    state_event_count = 0;
+
+    state_tick();
+    state_pop();
+
+    state_push(&base_state);
+    assert(state_init_count[STATE_BASE] == 1);
+    state_tick();
+    assert(state_update_count[STATE_BASE] == 1);
+    assert(state_draw_count[STATE_BASE] == 1);
+
+    state_push(&overlay_state);
+    assert(state_init_count[STATE_OVERLAY] == 1);
+    state_tick();
+    assert(state_update_count[STATE_BASE] == 1);
+    assert(state_update_count[STATE_OVERLAY] == 1);
+    assert(state_draw_count[STATE_BASE] == 2);
+    assert(state_draw_count[STATE_OVERLAY] == 1);
+    assert(state_events[state_event_count - 2] ==
+           (char)('d' + STATE_BASE * 4U));
+    assert(state_events[state_event_count - 1] ==
+           (char)('d' + STATE_OVERLAY * 4U));
+
+    state_pop();
+    assert(state_exit_count[STATE_OVERLAY] == 1);
+    state_tick();
+    assert(state_update_count[STATE_BASE] == 2);
+    assert(state_draw_count[STATE_BASE] == 3);
+
+    state_replace(&replacement_state);
+    assert(state_exit_count[STATE_BASE] == 1);
+    assert(state_init_count[STATE_REPLACEMENT] == 1);
+    assert(state_events[state_event_count - 2] ==
+           (char)('e' + STATE_BASE * 4U));
+    assert(state_events[state_event_count - 1] ==
+           (char)('i' + STATE_REPLACEMENT * 4U));
+    state_tick();
+    assert(state_update_count[STATE_REPLACEMENT] == 1);
+    assert(state_draw_count[STATE_REPLACEMENT] == 1);
+    assert(state_draw_count[STATE_BASE] == 3);
+
+    state_push(&opaque_state);
+    state_event_count = 0;
+    state_tick();
+    assert(state_update_count[STATE_OPAQUE] == 1);
+    assert(state_draw_count[STATE_OPAQUE] == 1);
+    assert(state_draw_count[STATE_REPLACEMENT] == 1);
+    assert(state_event_count == 2);
+    state_pop();
+    state_pop();
+
+    state_push(&base_state);
+    state_replace(0);
+    assert(state_init_count[STATE_BASE] == 2);
+    state_drain();
+
+    state_push(&base_state);
+    state_push(&overlay_state);
+    state_push(&replacement_state);
+    state_push(&opaque_state);
+    state_push(&extra_state);
+    assert(state_init_count[STATE_EXTRA] == 0);
+    assert(state_exit_count[STATE_OPAQUE] == 1);
+    state_pop();
+    assert(state_exit_count[STATE_OPAQUE] == 2);
+    state_pop();
+    assert(state_exit_count[STATE_REPLACEMENT] == 2);
+    state_pop();
+    assert(state_exit_count[STATE_OVERLAY] == 2);
+    state_pop();
+    assert(state_exit_count[STATE_BASE] == 3);
+    state_pop();
+
+    state_replace(0);
+    state_drain();
+}
+
 static void test_input_edges(void) {
     input_held = 0;
     input_pressed = 0;
@@ -580,5 +725,6 @@ int main(void) {
     test_menu_parent_stack();
     test_input_edges();
     test_input_repeat();
+    test_state_stack();
     return 0;
 }
