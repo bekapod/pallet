@@ -29,6 +29,9 @@ uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
 
+void sfx_tick(void) {
+}
+
 void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
     font_start = first_tile;
     font_count = nb_tiles;

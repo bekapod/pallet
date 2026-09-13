@@ -11,5 +11,6 @@
 #include "seq.h"
 #include "shake.h"
 #include "text.h"
+#include "vblank.h"
 
 #endif
