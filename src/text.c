@@ -7,6 +7,7 @@ typedef struct {
     uint8_t x;
     uint8_t y;
     uint8_t tile;
+    uint8_t window;
 } text_write_t;
 
 static text_write_t writes[TEXT_QUEUE_CAPACITY];
@@ -37,13 +38,14 @@ static uint8_t glyph_tile(char character) {
     }
 }
 
-static void queue_tile(uint8_t x, uint8_t y, uint8_t tile) {
+static void queue_tile(uint8_t x, uint8_t y, uint8_t tile, uint8_t window) {
     if (write_count == TEXT_QUEUE_CAPACITY)
         return;
 
     writes[write_count].x = x;
     writes[write_count].y = y;
     writes[write_count].tile = tile;
+    writes[write_count].window = window;
     write_count++;
 }
 
@@ -56,15 +58,28 @@ void text_init(const uint8_t *font_tiles) {
 void text_vblank(void) {
     uint8_t index;
 
-    for (index = 0; index < write_count; index++)
-        set_bkg_tile_xy(writes[index].x, writes[index].y, writes[index].tile);
+    for (index = 0; index < write_count; index++) {
+        if (writes[index].window)
+            set_win_tile_xy(writes[index].x, writes[index].y,
+                            writes[index].tile);
+        else
+            set_bkg_tile_xy(writes[index].x, writes[index].y,
+                            writes[index].tile);
+    }
 
     write_count = 0;
 }
 
 void text_print(uint8_t x, uint8_t y, const char *text) {
     while (*text) {
-        queue_tile(x++, y, glyph_tile(*text));
+        queue_tile(x++, y, glyph_tile(*text), 0);
+        text++;
+    }
+}
+
+void text_window_print(uint8_t x, uint8_t y, const char *text) {
+    while (*text) {
+        queue_tile(x++, y, glyph_tile(*text), 1);
         text++;
     }
 }
@@ -73,14 +88,14 @@ void text_digits(uint8_t x, uint8_t y, uint16_t value, uint8_t width) {
     uint8_t position = width;
 
     while (position)
-        queue_tile(x + --position, y, TEXT_EMPTY_TILE);
+        queue_tile(x + --position, y, TEXT_EMPTY_TILE, 0);
 
     position = width;
     do {
         if (!position)
             return;
         queue_tile(x + --position, y,
-                   TEXT_TILE_BASE + (uint8_t)(value % 10));
+                   TEXT_TILE_BASE + (uint8_t)(value % 10), 0);
         value /= 10;
     } while (value);
 }
