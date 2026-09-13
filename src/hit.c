@@ -1,12 +1,11 @@
 #include "hit.h"
 
-uint8_t hit_aabb(uint8_t ax, uint8_t ay, uint8_t aw, uint8_t ah,
-                 uint8_t bx, uint8_t by, uint8_t bw, uint8_t bh) {
-    return (uint8_t)(ax < bx + bw && bx < ax + aw && ay < by + bh &&
-                     by < ay + ah);
+uint8_t hit_overlaps(hitbox_t a, hitbox_t b) {
+    return (uint8_t)(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h &&
+                     b.y < a.y + a.h);
 }
 
-uint8_t hit_point_in(uint8_t x, uint8_t y,
-                     uint8_t bx, uint8_t by, uint8_t bw, uint8_t bh) {
-    return (uint8_t)(x >= bx && x < bx + bw && y >= by && y < by + bh);
+uint8_t hit_contains(hitbox_t box, uint8_t x, uint8_t y) {
+    return (uint8_t)(x >= box.x && x < box.x + box.w && y >= box.y &&
+                     y < box.y + box.h);
 }

@@ -3,11 +3,18 @@
 
 #include <stdint.h>
 
-/* Rectangles use half-open screen-space bounds: [x, x + width) and
- * [y, y + height). Callers must provide nonzero widths and heights. */
-uint8_t hit_aabb(uint8_t ax, uint8_t ay, uint8_t aw, uint8_t ah,
-                 uint8_t bx, uint8_t by, uint8_t bw, uint8_t bh);
-uint8_t hit_point_in(uint8_t x, uint8_t y,
-                     uint8_t bx, uint8_t by, uint8_t bw, uint8_t bh);
+/* Half-open screen-space rectangle: [x, x + w) and [y, y + h). */
+typedef struct {
+    uint8_t x;
+    uint8_t y;
+    uint8_t w;
+    uint8_t h;
+} hitbox_t;
+
+/* True when the two rectangles share at least one pixel. */
+uint8_t hit_overlaps(hitbox_t a, hitbox_t b);
+
+/* True when the point lies inside the rectangle. */
+uint8_t hit_contains(hitbox_t box, uint8_t x, uint8_t y);
 
 #endif

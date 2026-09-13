@@ -1036,11 +1036,18 @@ static void test_fixed_point(void) {
 }
 
 static void test_hit(void) {
-    assert(hit_aabb(0, 0, 10, 10, 9, 0, 10, 10));
-    assert(!hit_aabb(0, 0, 10, 10, 10, 0, 10, 10));
-    assert(!hit_aabb(0, 0, 10, 10, 20, 0, 10, 10));
-    assert(hit_point_in(10, 20, 10, 20, 8, 8));
-    assert(!hit_point_in(18, 20, 10, 20, 8, 8));
+    {
+        static const hitbox_t a = {0, 0, 10, 10};
+        static const hitbox_t b = {9, 0, 10, 10};
+        static const hitbox_t c = {10, 0, 10, 10};
+        static const hitbox_t d = {20, 0, 10, 10};
+
+        assert(hit_overlaps(a, b));
+        assert(!hit_overlaps(a, c));
+        assert(!hit_overlaps(a, d));
+        assert(hit_contains(a, 9, 9));
+        assert(!hit_contains(a, 10, 9));
+    }
 }
 
 static void test_timer(void) {
