@@ -8,6 +8,7 @@
 #include "music.h"
 #include "menu.h"
 #include "rng.h"
+#include "save.h"
 #include "sfx.h"
 #include "seq.h"
 #include "shake.h"

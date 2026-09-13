@@ -19,7 +19,7 @@ HUGETRACKER_SHA256 := 259a694fd93ae5f6c430e13ca7fcca0c86c83b7b2bfd50c38394cbdbd5
 endif
 HUGETRACKER_URL := https://github.com/SuperDisk/hUGETracker/releases/download/v$(HUGETRACKER_VERSION)/hUGETracker-$(HUGETRACKER_VERSION)-$(HUGETRACKER_PLATFORM).zip
 UGE2SOURCE ?= $(TOOLS_DIR)/uge2source
-LCCFLAGS ?= -debug -Wl-j -Wm-yS -Wl-yt1 -Wl-yo2 -Wl-ya0
+LCCFLAGS ?= -debug -Wl-j -Wm-yS -Wl-yt0x1B -Wl-yo2 -Wl-ya1
 HUGE_DRIVER_LIB := $(ENGINE)third_party/hUGEDriver/gbdk/hUGEDriver.lib
 GAME_SOURCES := $(wildcard src/*.c)
 GAME_HEADERS := $(wildcard src/*.h)
