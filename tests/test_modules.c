@@ -8,6 +8,7 @@
 #include "camera.h"
 #include "fade.h"
 #include "flash.h"
+#include "status.h"
 #include "fx.h"
 #include "hit.h"
 #include "input.h"
@@ -373,7 +374,28 @@ static void test_flash(void) {
     BGP_REG = 0x12;
     OBP0_REG = 0x34;
     OBP1_REG = 0x56;
-    flash(2);
+
+    /* Flash fails while a fade owns the palettes. */
+    fade_out(2);
+    assert(flash(2) == PALLET_BUSY);
+    assert(BGP_REG == 0x12);
+    assert(flash_active == 0);
+    while (fade_active)
+        fade_tick();
+    assert(!fade_active);
+
+    /* Fade fails while a flash owns the palettes. */
+    assert(flash(2) == PALLET_OK);
+    assert(fade_out(2) == PALLET_BUSY);
+    assert(fade_active == 0);
+    while (flash_active)
+        flash_tick();
+    assert(!flash_active);
+
+    BGP_REG = 0x12;
+    OBP0_REG = 0x34;
+    OBP1_REG = 0x56;
+    assert(flash(2) == PALLET_OK);
     assert(BGP_REG == (uint8_t)~0x12);
     assert(OBP0_REG == (uint8_t)~0x34);
     assert(OBP1_REG == (uint8_t)~0x56);

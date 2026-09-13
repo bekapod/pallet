@@ -3,6 +3,8 @@
 
 #include "fade.h"
 
+#include "flash.h"
+
 #define FADE_LEVELS 4
 #define FADE_BLACK 3
 
@@ -48,7 +50,9 @@ static void capture_palettes(void) {
     obj1_palette.original = OBP1_REG;
 }
 
-static void start_fade(uint8_t frames_per_step, uint8_t direction) {
+static pallet_status_t start_fade(uint8_t frames_per_step, uint8_t direction) {
+    if (flash_active)
+        return PALLET_BUSY;
     if (!direction || !saved_palettes) {
         capture_palettes();
         saved_palettes = 1;
@@ -59,15 +63,16 @@ static void start_fade(uint8_t frames_per_step, uint8_t direction) {
     fade_level = direction ? FADE_BLACK : 0;
     write_palettes(fade_level);
     fade_active = 1;
+    return PALLET_OK;
 }
 
-void fade_out(uint8_t frames_per_step) {
+pallet_status_t fade_out(uint8_t frames_per_step) {
     saved_palettes = 0;
-    start_fade(frames_per_step, 0);
+    return start_fade(frames_per_step, 0);
 }
 
-void fade_in(uint8_t frames_per_step) {
-    start_fade(frames_per_step, 1);
+pallet_status_t fade_in(uint8_t frames_per_step) {
+    return start_fade(frames_per_step, 1);
 }
 
 void fade_tick(void) {
