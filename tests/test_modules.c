@@ -337,7 +337,7 @@ static void test_camera(void) {
     assert(SCY_REG == 4);
 
     scroll_set_on_column(0);
-    scroll_set_speed(0x0100);
+    scroll_set_speed(SCROLL_SPEED_PX(1));
     scroll_reset(0);
     scroll_tick();
     camera_apply();
@@ -496,13 +496,15 @@ static void record_scroll_column(uint8_t map_col, uint8_t world_col) {
 }
 
 static void test_scroll(void) {
+    assert(SCROLL_SPEED_PX(1) == 0x0100);
+
     unsigned index;
 
     memset(scroll_map_columns, 0, sizeof(scroll_map_columns));
     memset(scroll_world_columns, 0, sizeof(scroll_world_columns));
     scroll_callback_count = 0;
     scroll_set_on_column(record_scroll_column);
-    scroll_set_speed(0x0100);
+    scroll_set_speed(SCROLL_SPEED_PX(1));
     scroll_reset(0);
     assert(scroll_callback_count == 21U);
     for (index = 0; index <= SCROLL_VIEW_COLUMNS; index++) {
@@ -519,7 +521,7 @@ static void test_scroll(void) {
     assert(scroll_map_columns[21] == 21 && scroll_world_columns[21] == 21);
 
     scroll_callback_count = 0;
-    scroll_set_speed(0x0180);
+    scroll_set_speed(SCROLL_SPEED_PX(1) + SCROLL_SPEED_PX(1) / 2);
     scroll_reset(0);
     scroll_callback_count = 21U;
     for (index = 0; index < 8; index++)
@@ -537,7 +539,7 @@ static void test_scroll(void) {
     assert(scroll_world_columns[22] == 22);
     assert(scroll_world_columns[23] == 23);
 
-    scroll_set_speed(0x0100);
+    scroll_set_speed(SCROLL_SPEED_PX(1));
     scroll_reset(40);
     scroll_pause();
     {
