@@ -5,14 +5,19 @@
 
 #include "blink.h"
 #include "fade.h"
+#include "flash.h"
 #include "input.h"
 #include "menu.h"
+#include "seq.h"
+#include "shake.h"
 #include "text.h"
 
 uint8_t BGP_REG;
 uint8_t OBP0_REG;
 uint8_t OBP1_REG;
 uint8_t LCDC_REG;
+uint8_t SCX_REG;
+uint8_t SCY_REG;
 uint8_t bkg_tiles[32][32];
 uint8_t win_tiles[32][32];
 uint8_t win_x;
@@ -23,6 +28,9 @@ uint8_t sprite_y[40];
 uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
+
+void sfx_tick(void) {
+}
 
 void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
     font_start = first_tile;
@@ -138,6 +146,75 @@ static void test_fade(void) {
     assert(OBP0_REG == 0x55);
     assert(OBP1_REG == 0x1B);
     assert(fade_active == 0);
+}
+
+static unsigned callback_count;
+static unsigned callback_order;
+
+static void callback_one(void) {
+    callback_count++;
+    callback_order = callback_order * 10 + 1;
+}
+
+static void callback_two(void) {
+    callback_count++;
+    callback_order = callback_order * 10 + 2;
+}
+
+static void test_sequence(void) {
+    seq_clear();
+    callback_count = 0;
+    callback_order = 0;
+    assert(seq_push(callback_one, 2));
+    assert(seq_push(0, 1));
+    assert(seq_push(callback_two, 0));
+    assert(seq_busy());
+    seq_tick();
+    assert(callback_order == 1);
+    seq_tick();
+    assert(callback_count == 1);
+    seq_tick();
+    assert(callback_count == 1);
+    seq_tick();
+    assert(callback_order == 12);
+    assert(!seq_busy());
+
+    for (uint8_t entry = 0; entry < SEQ_CAPACITY; entry++)
+        assert(seq_push(0, 1));
+    assert(!seq_push(0, 1));
+    seq_clear();
+    assert(!seq_busy());
+}
+
+static void test_shake(void) {
+    SCX_REG = 9;
+    SCY_REG = 8;
+    shake(2, 3);
+    shake_tick();
+    assert(SCX_REG == 3);
+    assert(SCY_REG == (uint8_t)-3);
+    assert(shake_active);
+    shake_tick();
+    assert(SCX_REG == 0);
+    assert(SCY_REG == 0);
+    assert(!shake_active);
+}
+
+static void test_flash(void) {
+    BGP_REG = 0x12;
+    OBP0_REG = 0x34;
+    OBP1_REG = 0x56;
+    flash(2);
+    assert(BGP_REG == (uint8_t)~0x12);
+    assert(OBP0_REG == (uint8_t)~0x34);
+    assert(OBP1_REG == (uint8_t)~0x56);
+    flash_tick();
+    assert(flash_active);
+    flash_tick();
+    assert(!flash_active);
+    assert(BGP_REG == 0x12);
+    assert(OBP0_REG == 0x34);
+    assert(OBP1_REG == 0x56);
 }
 
 static void test_text(void) {
@@ -332,6 +409,9 @@ static void test_input_edges(void) {
 int main(void) {
     test_blink();
     test_fade();
+    test_sequence();
+    test_shake();
+    test_flash();
     test_text();
     test_menu_navigation_and_flags();
     test_menu_parent_stack();
