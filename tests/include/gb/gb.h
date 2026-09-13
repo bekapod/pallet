@@ -34,6 +34,7 @@ void set_bkg_tiles(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
 uint8_t *set_win_tile_xy(uint8_t x, uint8_t y, uint8_t tile);
 void move_win(uint8_t x, uint8_t y);
 void set_sprite_tile(uint8_t sprite, uint8_t tile);
+void set_sprite_prop(uint8_t sprite, uint8_t prop);
 void move_sprite(uint8_t sprite, uint8_t x, uint8_t y);
 
 /* Test-only declaration for the fake joypad supplied by test_modules.c. */

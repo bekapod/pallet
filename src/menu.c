@@ -3,6 +3,7 @@
 
 #include "input.h"
 #include "menu.h"
+#include "spr.h"
 #include "text.h"
 
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
 static menu_state_t active_menu;
 static menu_state_t parents[2];
 static uint8_t menu_depth;
+static uint8_t cursor_slot = SPR_NONE;
 
 static uint8_t string_width(const char *text) {
     uint8_t width = 0;
@@ -48,9 +50,11 @@ static void draw_item(uint8_t item) {
 }
 
 static void move_cursor(void) {
-    /* Sprite coordinates include the Game Boy's 8x16 hardware offset. */
-    move_sprite(0, (uint8_t)(active_menu.x * 8U + 8U),
-                (uint8_t)((active_menu.y + active_menu.selected) * 8U + 16U));
+    if (cursor_slot != SPR_NONE) {
+        /* Sprite coordinates include the Game Boy's 8x16 hardware offset. */
+        spr_move(cursor_slot, (uint8_t)(active_menu.x * 8U + 8U),
+                 (uint8_t)((active_menu.y + active_menu.selected) * 8U + 16U));
+    }
 }
 
 static void draw_menu(void) {
@@ -62,13 +66,20 @@ static void draw_menu(void) {
     move_win((uint8_t)(active_menu.x * 8U + 7U),
              (uint8_t)(active_menu.y * 8U));
     SHOW_WIN;
-    set_sprite_tile(0, TEXT_TILE_BASE + 39U);
-    move_cursor();
+    if (cursor_slot != SPR_NONE) {
+        spr_tile(cursor_slot, TEXT_TILE_BASE + 39U);
+        spr_prop(cursor_slot, 0U);
+        move_cursor();
+    }
 }
 
 static void hide_menu(void) {
     HIDE_WIN;
-    move_sprite(0, 0U, 0U);
+    if (cursor_slot != SPR_NONE) {
+        spr_move(cursor_slot, 0U, 0U);
+        spr_free(cursor_slot, 1U);
+        cursor_slot = SPR_NONE;
+    }
 }
 
 void menu_open(const char *const *items, uint8_t item_count, uint8_t x,
@@ -100,7 +111,8 @@ void menu_open_ex(const char *const *items, const uint8_t *flags,
     if (menu_depth) {
         clear_menu(&active_menu);
         parents[menu_depth - 1U] = active_menu;
-    }
+    } else
+        cursor_slot = spr_alloc(1U);
     active_menu = next;
     menu_depth++;
     draw_menu();
