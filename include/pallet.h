@@ -14,6 +14,7 @@
 #include "sfx.h"
 #include "seq.h"
 #include "shake.h"
+#include "scroll.h"
 #include "spr.h"
 #include "text.h"
 #include "timer.h"
