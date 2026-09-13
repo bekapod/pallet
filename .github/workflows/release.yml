@@ -1,0 +1,193 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must use vMAJOR.MINOR.PATCH; got: $tag" >&2
+            exit 1
+          fi
+
+          git fetch origin main --tags --force
+          release_sha="$(git rev-parse "${GITHUB_REF}^{commit}")"
+          if ! git merge-base --is-ancestor "$release_sha" origin/main; then
+            echo "Release commit $release_sha is not reachable from origin/main" >&2
+            exit 1
+          fi
+
+          {
+            echo "tag=$tag"
+            echo "sha=$release_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          previous_tag=""
+          while IFS= read -r candidate; do
+            [[ "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+            [[ "$candidate" == "$RELEASE_TAG" ]] && continue
+            candidate_sha="$(git rev-parse "${candidate}^{commit}")"
+            if git merge-base --is-ancestor "$candidate_sha" "$RELEASE_SHA"; then
+              previous_tag="$candidate"
+              break
+            fi
+          done < <(git for-each-ref --format='%(refname:short)' --sort=-creatordate refs/tags)
+
+          notes="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "## Changes"
+            echo
+            if [[ -n "$previous_tag" ]]; then
+              echo "Changes since [$previous_tag](https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${RELEASE_TAG}):"
+              echo
+              git log --reverse --pretty=format:'- %h %s' "${previous_tag}..${RELEASE_SHA}"
+            else
+              echo "Initial release: all changes through ${RELEASE_TAG}."
+              echo
+              git log --reverse --pretty=format:'- %h %s' "$RELEASE_SHA"
+            fi
+            echo
+          } > "$notes"
+
+          {
+            echo "previous_tag=$previous_tag"
+            echo "file=$notes"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          RELEASE_NOTES: ${{ steps.notes.outputs.file }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $RELEASE_TAG already exists."
+            exit 0
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "$RELEASE_TAG" \
+            --notes-file "$RELEASE_NOTES"
+
+      - name: Check out Ditto
+        uses: actions/checkout@v7
+        with:
+          repository: bekapod/ditto
+          path: ditto
+          submodules: true
+          token: ${{ secrets.DITTO_PR_TOKEN }}
+
+      - name: Update Ditto engine submodule
+        id: ditto
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DITTO_PR_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          set -euo pipefail
+
+          branch="pallet-release-${RELEASE_TAG}"
+          existing_pr="$(gh pr list --repo bekapod/ditto --head "$branch" --base main --state open --json url --jq '.[0].url')"
+          if [[ -n "$existing_pr" ]]; then
+            echo "An open Ditto PR already exists: $existing_pr"
+            {
+              echo "branch=$branch"
+              echo "changed=false"
+              echo "pr_url=$existing_pr"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git -C ditto/engine fetch origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          git -C ditto/engine checkout --detach "$RELEASE_SHA"
+          git -C ditto switch -c "$branch"
+          git -C ditto add engine
+
+          if git -C ditto diff --cached --quiet; then
+            echo "Ditto already points to $RELEASE_SHA."
+            {
+              echo "branch=$branch"
+              echo "changed=false"
+              echo "pr_url="
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git -C ditto config user.name "github-actions[bot]"
+          git -C ditto config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ditto commit -m "chore: update pallet to ${RELEASE_TAG}"
+          git -C ditto push origin "HEAD:refs/heads/${branch}"
+          {
+            echo "branch=$branch"
+            echo "changed=true"
+            echo "pr_url="
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open Ditto update PR
+        if: steps.ditto.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DITTO_PR_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_BRANCH: ${{ steps.ditto.outputs.branch }}
+          RELEASE_NOTES: ${{ steps.notes.outputs.file }}
+        run: |
+          set -euo pipefail
+
+          body="$RUNNER_TEMP/ditto-pr.md"
+          {
+            echo "## Summary"
+            echo
+            echo "Update Ditto's Pallet engine submodule to ${RELEASE_TAG}."
+            echo
+            cat "$RELEASE_NOTES"
+            echo
+            echo "## Validation"
+            echo
+            echo "Ditto CI builds the ROM and runs its test suite against this pinned engine revision."
+          } > "$body"
+
+          gh pr create \
+            --repo bekapod/ditto \
+            --base main \
+            --head "$RELEASE_BRANCH" \
+            --title "chore: update pallet to ${RELEASE_TAG}" \
+            --body-file "$body"
+
+      - name: Report unchanged Ditto pin
+        if: steps.ditto.outputs.changed == 'false' && steps.ditto.outputs.pr_url == ''
+        run: echo "Ditto already points to this Pallet release; no PR is needed."
