@@ -16,6 +16,7 @@
 #include "rng.h"
 #include "save.h"
 #include "seq.h"
+#include "sfx.h"
 #include "status.h"
 #include "shake.h"
 #include "scroll.h"
@@ -179,6 +180,14 @@ static void test_save(void) {
     assert(test_ram_enabled == 0);
     assert(save_load(3, loaded, sizeof(loaded)) == SAVE_MISSING);
     assert(test_ram_enabled == 0);
+}
+
+static void test_sfx_macros(void) {
+    assert(SFX_ENV(12, 2) == 0xC2);
+    assert(SFX_NOISE(3, 4) == 0x34);
+    assert(SFX_DUTY_12_5 == 0x00);
+    assert(SFX_PITCH_LO(0x1234) == 0x34);
+    assert(SFX_PITCH_HI(0x1234) == 0x12);
 }
 
 static void test_rng(void) {
@@ -1139,6 +1148,7 @@ static void test_timer(void) {
 
 int main(void) {
     test_save();
+    test_sfx_macros();
     test_rng();
     test_blink();
     test_fade();

@@ -30,11 +30,11 @@ typedef struct {
     sfx_channel_t channel;
 } sfx_script_t;
 
-#define DUTY_12_5 0x00
-#define ENV(vol, fade) (((vol) << 4) | (fade))
-#define NOISE(shift, div) (((shift) << 4) | (div))
-#define PITCH_LO(pitch) ((pitch) & 0xFF)
-#define PITCH_HI(pitch) ((pitch) >> 8)
+#define SFX_DUTY_12_5 0x00
+#define SFX_ENV(vol, fade) (((vol) << 4) | (fade))
+#define SFX_NOISE(shift, div) (((shift) << 4) | (div))
+#define SFX_PITCH_LO(pitch) ((pitch) & 0xFF)
+#define SFX_PITCH_HI(pitch) ((pitch) >> 8)
 
 void sfx_init(void);
 void sfx_play(const sfx_script_t *script);
