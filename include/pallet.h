@@ -7,6 +7,7 @@
 #include "input.h"
 #include "music.h"
 #include "menu.h"
+#include "rng.h"
 #include "sfx.h"
 #include "seq.h"
 #include "shake.h"
