@@ -1,4 +1,6 @@
 #ifndef PALLET_MENU_H
+
+#include "config.h"
 #define PALLET_MENU_H
 
 #include <stdint.h>
@@ -12,7 +14,6 @@
 #define MENU_NO_MENU 0xFFU
 
 #define MENU_ITEM_DISABLED 0x01U
-#define MENU_MAX_ITEMS 16U
 
 typedef struct {
     const char *text;

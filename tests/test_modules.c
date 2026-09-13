@@ -318,7 +318,7 @@ static void test_sequence(void) {
     assert(callback_order == 12);
     assert(!seq_busy());
 
-    for (uint8_t entry = 0; entry < SEQ_CAPACITY; entry++)
+    for (uint8_t entry = 0; entry < PALLET_SEQ_CAPACITY; entry++)
         assert(seq_push(0, 1));
     assert(!seq_push(0, 1));
     seq_clear();
@@ -639,7 +639,7 @@ static void test_spr(void) {
     memset(sprite_x, 0xFF, sizeof(sprite_x));
     memset(sprite_y, 0xFF, sizeof(sprite_y));
     spr_reset();
-    for (index = 0; index < SPR_SLOT_COUNT; index++)
+    for (index = 0; index < PALLET_SPR_SLOTS; index++)
         assert(sprite_x[index] == 0 && sprite_y[index] == 0);
     assert(spr_alloc(1) == 0);
     assert(spr_alloc(4) == 1);
@@ -699,7 +699,7 @@ static void test_spr(void) {
 
     spr_reset();
     assert(spr_alloc(40) == 0);
-    for (index = 0; index < SPR_SLOT_COUNT; index++)
+    for (index = 0; index < PALLET_SPR_SLOTS; index++)
         assert(sprite_x[index] == 0 && sprite_y[index] == 0);
 }
 

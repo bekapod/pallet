@@ -8,7 +8,7 @@
 
 typedef struct {
     const menu_item_t *items;
-    uint8_t flags[MENU_MAX_ITEMS];
+    uint8_t flags[PALLET_MENU_MAX_ITEMS];
     uint8_t item_count;
     uint8_t x;
     uint8_t y;
@@ -87,7 +87,7 @@ void menu_open(const menu_item_t *items, uint8_t item_count, uint8_t x,
     menu_state_t next = {0};
     uint8_t item;
 
-    if (!items || !item_count || item_count > MENU_MAX_ITEMS)
+    if (!items || !item_count || item_count > PALLET_MENU_MAX_ITEMS)
         return;
     if (menu_depth == 3U)
         return;

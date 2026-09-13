@@ -1,11 +1,12 @@
 #ifndef PALLET_STATE_H
+
+#include "config.h"
 #define PALLET_STATE_H
 
 #include <stdint.h>
 
 #include "status.h"
 
-#define STATE_STACK_CAPACITY 4U
 
 typedef struct {
     void (*init)(void);

@@ -1,9 +1,10 @@
 #ifndef PALLET_SPR_H
+
+#include "config.h"
 #define PALLET_SPR_H
 
 #include <stdint.h>
 
-#define SPR_SLOT_COUNT 40U
 #define SPR_NONE 0xFFU
 
 /*

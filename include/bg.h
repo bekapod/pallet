@@ -1,11 +1,13 @@
 #ifndef PALLET_BG_H
+
+#include "config.h"
 #define PALLET_BG_H
 
 #include <stdint.h>
 
 /* Maximum number of queued commands. Define before including this header to override. */
 #ifndef BG_QUEUE_CAPACITY
-#define BG_QUEUE_CAPACITY 512U
+
 #endif
 
 /* Maximum number of background-map entries written by one bg_flush(). */

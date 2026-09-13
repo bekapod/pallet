@@ -1,4 +1,6 @@
 #ifndef PALLET_TEXT_H
+
+#include "config.h"
 #define PALLET_TEXT_H
 
 #include <stdint.h>
@@ -12,7 +14,6 @@
 #endif
 
 #ifndef TEXT_QUEUE_CAPACITY
-#define TEXT_QUEUE_CAPACITY 64
 #endif
 
 /* Sprite tiles reserved for text glyphs and the menu's > cursor. Override

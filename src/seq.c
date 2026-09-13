@@ -7,14 +7,14 @@ typedef struct {
     uint8_t wait_frames;
 } seq_entry_t;
 
-static seq_entry_t queue[SEQ_CAPACITY];
+static seq_entry_t queue[PALLET_SEQ_CAPACITY];
 static uint8_t front;
 static uint8_t count;
 static uint8_t waiting;
 static uint8_t started;
 
 static void discard_front(void) {
-    front = (front + 1) % SEQ_CAPACITY;
+    front = (front + 1) % PALLET_SEQ_CAPACITY;
     count--;
     started = 0;
 }
@@ -22,9 +22,9 @@ static void discard_front(void) {
 uint8_t seq_push(seq_callback_t callback, uint8_t wait_frames) {
     uint8_t back;
 
-    if (count == SEQ_CAPACITY)
+    if (count == PALLET_SEQ_CAPACITY)
         return 0;
-    back = (front + count) % SEQ_CAPACITY;
+    back = (front + count) % PALLET_SEQ_CAPACITY;
     queue[back].callback = callback;
     queue[back].wait_frames = wait_frames;
     count++;

@@ -2,7 +2,7 @@
 
 #include "fade.h"
 
-static const state_t *stack[STATE_STACK_CAPACITY];
+static const state_t *stack[PALLET_STATE_STACK_CAPACITY];
 static uint8_t depth;
 static uint8_t in_update;
 static const state_t *pending_state;
@@ -21,7 +21,7 @@ static void apply_pending(void) {
 pallet_status_t state_push(const state_t *state) {
     if (!state)
         return PALLET_BAD_ARGUMENT;
-    if (depth >= STATE_STACK_CAPACITY)
+    if (depth >= PALLET_STATE_STACK_CAPACITY)
         return PALLET_FULL;
 
     stack[depth++] = state;

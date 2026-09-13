@@ -10,7 +10,7 @@ typedef struct {
     uint8_t tile;
 } text_write_t;
 
-static text_write_t writes[TEXT_QUEUE_CAPACITY];
+static text_write_t writes[PALLET_TEXT_QUEUE_CAPACITY];
 static const uint8_t empty_tile[16] = {0};
 static uint8_t write_count;
 
@@ -44,7 +44,7 @@ static void queue_tile(uint8_t x, uint8_t y, uint8_t tile, uint8_t window) {
         return;
     }
 
-    if (write_count == TEXT_QUEUE_CAPACITY)
+    if (write_count == PALLET_TEXT_QUEUE_CAPACITY)
         return;
 
     writes[write_count].x = x;

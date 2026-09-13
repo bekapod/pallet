@@ -31,7 +31,7 @@ static uint8_t command_len(const bg_command_t *command) {
     return command->kind_and_len & BG_LEN_MASK;
 }
 
-static bg_command_t commands[BG_QUEUE_CAPACITY];
+static bg_command_t commands[PALLET_BG_QUEUE_CAPACITY];
 static uint16_t head;
 static uint16_t tail;
 static uint16_t command_count;
@@ -39,7 +39,7 @@ static uint16_t pending_tiles;
 
 static uint16_t next_index(uint16_t index) {
     index++;
-    if (index == BG_QUEUE_CAPACITY)
+    if (index == PALLET_BG_QUEUE_CAPACITY)
         index = 0;
     return index;
 }
@@ -47,7 +47,7 @@ static uint16_t next_index(uint16_t index) {
 static bg_command_t *reserve_command(void) {
     bg_command_t *command;
 
-    if (command_count == BG_QUEUE_CAPACITY)
+    if (command_count == PALLET_BG_QUEUE_CAPACITY)
         return 0;
 
     command = &commands[tail];

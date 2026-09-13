@@ -1,9 +1,10 @@
 #ifndef PALLET_SEQ_H
+
+#include "config.h"
 #define PALLET_SEQ_H
 
 #include <stdint.h>
 
-#define SEQ_CAPACITY 16
 
 typedef void (*seq_callback_t)(void);
 

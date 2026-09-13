@@ -3,19 +3,19 @@
 
 #include "spr.h"
 
-static uint8_t allocated[SPR_SLOT_COUNT];
+static uint8_t allocated[PALLET_SPR_SLOTS];
 
 static uint8_t valid_slot(uint8_t slot) {
-    return slot < SPR_SLOT_COUNT && allocated[slot];
+    return slot < PALLET_SPR_SLOTS && allocated[slot];
 }
 
 uint8_t spr_alloc(uint8_t count) {
     uint8_t first;
     uint8_t offset;
 
-    if (!count || count > SPR_SLOT_COUNT)
+    if (!count || count > PALLET_SPR_SLOTS)
         return SPR_NONE;
-    for (first = 0; first <= SPR_SLOT_COUNT - count; first++) {
+    for (first = 0; first <= PALLET_SPR_SLOTS - count; first++) {
         for (offset = 0; offset < count; offset++)
             if (allocated[first + offset])
                 break;
@@ -31,8 +31,8 @@ uint8_t spr_alloc(uint8_t count) {
 void spr_free(uint8_t first, uint8_t count) {
     uint8_t offset;
 
-    if (first == SPR_NONE || !count || first >= SPR_SLOT_COUNT ||
-        count > SPR_SLOT_COUNT - first)
+    if (first == SPR_NONE || !count || first >= PALLET_SPR_SLOTS ||
+        count > PALLET_SPR_SLOTS - first)
         return;
     for (offset = 0; offset < count; offset++)
         allocated[first + offset] = 0;
@@ -41,7 +41,7 @@ void spr_free(uint8_t first, uint8_t count) {
 void spr_reset(void) {
     uint8_t slot;
 
-    for (slot = 0; slot < SPR_SLOT_COUNT; slot++) {
+    for (slot = 0; slot < PALLET_SPR_SLOTS; slot++) {
         allocated[slot] = 0;
         move_sprite(slot, 0U, 0U);
     }
@@ -50,7 +50,7 @@ void spr_reset(void) {
 void spr_hide_unused(void) {
     uint8_t slot;
 
-    for (slot = 0; slot < SPR_SLOT_COUNT; slot++)
+    for (slot = 0; slot < PALLET_SPR_SLOTS; slot++)
         if (!allocated[slot])
             move_sprite(slot, 0U, 0U);
 }
