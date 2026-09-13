@@ -14,6 +14,7 @@
 #include "seq.h"
 #include "shake.h"
 #include "state.h"
+#include "spr.h"
 #include "text.h"
 
 uint8_t BGP_REG;
@@ -31,6 +32,7 @@ uint8_t win_y;
 uint8_t sprite_tiles[40];
 uint8_t sprite_x[40];
 uint8_t sprite_y[40];
+uint8_t sprite_props[40];
 uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
@@ -77,6 +79,10 @@ void set_sprite_tile(uint8_t sprite, uint8_t tile) {
 void move_sprite(uint8_t sprite, uint8_t x, uint8_t y) {
     sprite_x[sprite] = x;
     sprite_y[sprite] = y;
+}
+
+void set_sprite_prop(uint8_t sprite, uint8_t prop) {
+    sprite_props[sprite] = prop;
 }
 
 enum {
@@ -425,6 +431,81 @@ static void test_text(void) {
     assert(bkg_tiles[3][4] == font_tile(FONT_DIGIT_0));
 }
 
+static void test_spr(void) {
+    uint8_t slot;
+    uint8_t index;
+    uint8_t old_x;
+    uint8_t old_y;
+    uint8_t old_tile;
+    uint8_t old_prop;
+
+    memset(sprite_x, 0xFF, sizeof(sprite_x));
+    memset(sprite_y, 0xFF, sizeof(sprite_y));
+    spr_reset();
+    for (index = 0; index < SPR_SLOT_COUNT; index++)
+        assert(sprite_x[index] == 0 && sprite_y[index] == 0);
+    assert(spr_alloc(1) == 0);
+    assert(spr_alloc(4) == 1);
+    spr_free(1, 4);
+    assert(spr_alloc(4) == 1);
+
+    spr_reset();
+    assert(spr_alloc(10) == 0);
+    assert(spr_alloc(10) == 10);
+    assert(spr_alloc(10) == 20);
+    spr_free(10, 10);
+    assert(spr_alloc(15) == SPR_NONE);
+    spr_free(20, 10);
+    assert(spr_alloc(15) == 10);
+
+    spr_reset();
+    assert(spr_alloc(0) == SPR_NONE);
+    assert(spr_alloc(41) == SPR_NONE);
+    assert(spr_alloc(40) == 0);
+    assert(spr_alloc(1) == SPR_NONE);
+
+    spr_reset();
+    slot = spr_alloc(1);
+    spr_tile(slot, 23);
+    spr_move(slot, 64, 80);
+    spr_prop(slot, 7);
+    old_x = sprite_x[slot];
+    old_y = sprite_y[slot];
+    old_tile = sprite_tiles[slot];
+    old_prop = sprite_props[slot];
+    spr_tile(SPR_NONE, 99);
+    spr_move(SPR_NONE, 1, 2);
+    spr_prop(SPR_NONE, 99);
+    spr_tile(40, 99);
+    spr_move(40, 1, 2);
+    spr_prop(40, 99);
+    spr_free(slot, 1);
+    spr_tile(slot, 99);
+    spr_move(slot, 1, 2);
+    spr_prop(slot, 99);
+    assert(sprite_x[slot] == old_x && sprite_y[slot] == old_y);
+    assert(sprite_tiles[slot] == old_tile && sprite_props[slot] == old_prop);
+
+    slot = spr_alloc(2);
+    spr_move(slot, 12, 34);
+    spr_move((uint8_t)(slot + 1), 56, 78);
+    spr_free(slot, 0);
+    spr_free(SPR_NONE, 1);
+    spr_free(slot, 41);
+    spr_hide_unused();
+    assert(sprite_x[slot] == 12 && sprite_y[slot] == 34);
+    assert(sprite_x[slot + 1] == 56 && sprite_y[slot + 1] == 78);
+    spr_free(slot, 1);
+    spr_hide_unused();
+    assert(sprite_x[slot] == 0 && sprite_y[slot] == 0);
+    assert(sprite_x[slot + 1] == 56 && sprite_y[slot + 1] == 78);
+
+    spr_reset();
+    assert(spr_alloc(40) == 0);
+    for (index = 0; index < SPR_SLOT_COUNT; index++)
+        assert(sprite_x[index] == 0 && sprite_y[index] == 0);
+}
+
 static uint8_t menu_tick_with(uint8_t buttons) {
     joypad_value = buttons;
     input_update();
@@ -436,6 +517,7 @@ static void test_menu_navigation_and_flags(void) {
     static const uint8_t flags[] = {0, 0, MENU_ITEM_DISABLED};
     uint8_t frame;
 
+    spr_reset();
     memset(win_tiles, 0xFF, sizeof(win_tiles));
     LCDC_REG = 0;
     menu_open_ex(items, flags, 3, 3, 4);
@@ -483,6 +565,7 @@ static void test_menu_parent_stack(void) {
     static const char *const grandchild[] = {"GRAND"};
     static const char *const rejected[] = {"REJECTED"};
 
+    spr_reset();
     menu_open(root, 2, 1, 1);
     text_vblank();
     assert(menu_tick_with(J_DOWN) == MENU_NONE);
@@ -721,6 +804,7 @@ int main(void) {
     test_flash();
     test_bg();
     test_text();
+    test_spr();
     test_menu_navigation_and_flags();
     test_menu_parent_stack();
     test_input_edges();

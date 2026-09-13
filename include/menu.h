@@ -36,6 +36,6 @@ uint8_t menu_selected(void);
 /* Update an active item's flags, such as MENU_ITEM_DISABLED, and redraw it. */
 void menu_set_flag(uint8_t item, uint8_t flags);
 
-/* Sprite 0 is owned by the cursor while a menu is active. */
+/* The active menu owns one pool-allocated cursor slot. */
 
 #endif
