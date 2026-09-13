@@ -3,7 +3,7 @@ CFLAGS ?= -std=c99 -Wall -Wextra -Werror
 TEST_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 ROOT := $(abspath $(TEST_DIR)/..)
 TEST := $(TEST_DIR)/test_modules
-MODULES := blink fade input text
+MODULES := blink fade input menu text
 MODULE_SOURCES := $(addprefix $(ROOT)/src/,$(addsuffix .c,$(MODULES)))
 MODULE_HEADERS := $(addprefix $(ROOT)/include/,$(addsuffix .h,$(MODULES)))
 INCLUDE_FLAGS := -I$(TEST_DIR)/include -I$(ROOT)/include

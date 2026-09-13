@@ -6,13 +6,20 @@
 #include "blink.h"
 #include "fade.h"
 #include "input.h"
+#include "menu.h"
 #include "text.h"
 
 uint8_t BGP_REG;
 uint8_t OBP0_REG;
 uint8_t OBP1_REG;
+uint8_t LCDC_REG;
 uint8_t bkg_tiles[32][32];
 uint8_t win_tiles[32][32];
+uint8_t win_x;
+uint8_t win_y;
+uint8_t sprite_tiles[40];
+uint8_t sprite_x[40];
+uint8_t sprite_y[40];
 uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
@@ -31,6 +38,20 @@ uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
 uint8_t *set_win_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
     win_tiles[y][x] = tile;
     return &win_tiles[y][x];
+}
+
+void move_win(uint8_t x, uint8_t y) {
+    win_x = x;
+    win_y = y;
+}
+
+void set_sprite_tile(uint8_t sprite, uint8_t tile) {
+    sprite_tiles[sprite] = tile;
+}
+
+void move_sprite(uint8_t sprite, uint8_t x, uint8_t y) {
+    sprite_x[sprite] = x;
+    sprite_y[sprite] = y;
 }
 
 enum {
@@ -166,6 +187,122 @@ static void test_text(void) {
     assert(bkg_tiles[3][4] == font_tile(FONT_DIGIT_0));
 }
 
+static uint8_t menu_tick_with(uint8_t buttons) {
+    joypad_value = buttons;
+    input_update();
+    return menu_tick();
+}
+
+static void test_menu_navigation_and_flags(void) {
+    static const char *const items[] = {"START", "SOUND", "EXIT"};
+    static const uint8_t flags[] = {0, 0, MENU_ITEM_DISABLED};
+    uint8_t frame;
+
+    memset(win_tiles, 0xFF, sizeof(win_tiles));
+    LCDC_REG = 0;
+    menu_open_ex(items, flags, 3, 3, 4);
+    text_vblank();
+    assert(LCDC_REG & 0x20U);
+    assert(win_tiles[0][0] == TEXT_EMPTY_TILE);
+    assert(win_tiles[0][1] == font_tile(28)); /* S */
+    assert(win_tiles[2][0] == font_tile(FONT_HYPHEN));
+    assert(win_x == 31 && win_y == 32);
+    assert(sprite_tiles[0] == font_tile(FONT_GREATER_THAN));
+    assert(sprite_x[0] == 32);
+    assert(sprite_y[0] == 48);
+
+    assert(menu_tick_with(J_UP) == MENU_NONE);
+    assert(menu_selected() == 2);
+    assert(sprite_y[0] == 64);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 0);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 1);
+    for (frame = 0; frame < 14; frame++)
+        assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 1);
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 2);
+
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_A) == MENU_DENIED);
+    menu_set_flag(2, 0);
+    text_vblank();
+    assert(win_tiles[2][0] == TEXT_EMPTY_TILE);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_A) == MENU_CONFIRM);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(!(LCDC_REG & 0x20U));
+    assert(sprite_x[0] == 0 && sprite_y[0] == 0);
+}
+
+static void test_menu_parent_stack(void) {
+    static const char *const root[] = {"ROOT", "SECOND"};
+    static const char *const child[] = {"CHILD"};
+    static const char *const grandchild[] = {"GRAND"};
+    static const char *const rejected[] = {"REJECTED"};
+
+    menu_open(root, 2, 1, 1);
+    text_vblank();
+    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_selected() == 1);
+    assert(menu_tick_with(0) == MENU_NONE);
+
+    menu_open(child, 1, 5, 5);
+    text_vblank();
+    assert(menu_selected() == 0);
+    assert(win_x == 47 && win_y == 40);
+    assert(win_tiles[1][0] == TEXT_EMPTY_TILE);
+
+    menu_open(grandchild, 1, 7, 7);
+    text_vblank();
+    assert(win_x == 63 && win_y == 56);
+    menu_open(rejected, 1, 9, 9);
+    text_vblank();
+    assert(win_x == 63 && win_y == 56);
+    assert(win_tiles[0][1] == font_tile(16)); /* G */
+
+    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_selected() == 0);
+    assert(win_x == 47 && win_y == 40);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_selected() == 1);
+    assert(win_x == 15 && win_y == 8);
+    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(!(LCDC_REG & 0x20U));
+
+    menu_open(root, 0, 1, 1);
+    assert(!(LCDC_REG & 0x20U));
+}
+
+static void test_input_repeat(void) {
+    uint8_t frame;
+
+    joypad_value = 0;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    joypad_value = J_RIGHT;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+    for (frame = 0; frame < 14; frame++) {
+        input_update();
+        assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    }
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+    for (frame = 0; frame < 5; frame++) {
+        input_update();
+        assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    }
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+}
+
 static void test_input_edges(void) {
     input_held = 0;
     input_pressed = 0;
@@ -192,33 +329,12 @@ static void test_input_edges(void) {
     assert(input_released == J_UP);
 }
 
-static void test_input_repeat(void) {
-    uint8_t frame;
-
-    joypad_value = 0;
-    input_update();
-    assert(input_repeat(J_RIGHT, 15, 6) == 0);
-    joypad_value = J_RIGHT;
-    input_update();
-    assert(input_repeat(J_RIGHT, 15, 6) == 1);
-    for (frame = 0; frame < 14; frame++) {
-        input_update();
-        assert(input_repeat(J_RIGHT, 15, 6) == 0);
-    }
-    input_update();
-    assert(input_repeat(J_RIGHT, 15, 6) == 1);
-    for (frame = 0; frame < 5; frame++) {
-        input_update();
-        assert(input_repeat(J_RIGHT, 15, 6) == 0);
-    }
-    input_update();
-    assert(input_repeat(J_RIGHT, 15, 6) == 1);
-}
-
 int main(void) {
     test_blink();
     test_fade();
     test_text();
+    test_menu_navigation_and_flags();
+    test_menu_parent_stack();
     test_input_edges();
     test_input_repeat();
     return 0;
