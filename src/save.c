@@ -9,46 +9,60 @@
 #define SRAM_BASE ((volatile uint8_t *)0xA000U)
 #endif
 
-uint8_t save_load(void *dst, uint8_t len) {
+static uint8_t checksum(const uint8_t *bytes, uint8_t len) {
+    uint8_t sum = 0;
+    uint8_t index;
+
+    for (index = 0; index < len; index++)
+        sum ^= bytes[index];
+    return sum;
+}
+
+save_result_t save_load(uint8_t version, void *dst, uint8_t len) {
     uint8_t *bytes = dst;
-    uint8_t expected_version;
     uint8_t index;
     volatile uint8_t *sram;
 
     if (len == 0)
-        return 0;
+        return SAVE_BAD_ARGUMENT;
 
-    expected_version = bytes[0];
     ENABLE_RAM;
     sram = SRAM_BASE;
-    if (sram[0] == SAVE_MAGIC && sram[1] == expected_version) {
-        bytes[0] = expected_version;
-        for (index = 1; index < len; index++)
-            bytes[index] = sram[index + SAVE_HEADER_BYTES - 1U];
+    if (sram[0] != SAVE_MAGIC) {
         DISABLE_RAM;
-        return 1;
+        return SAVE_MISSING;
     }
-    DISABLE_RAM;
+    if (sram[1] != version) {
+        DISABLE_RAM;
+        return SAVE_BAD_VERSION;
+    }
+    if (sram[2] != checksum((const uint8_t *)sram + SAVE_HEADER_BYTES, len)) {
+        DISABLE_RAM;
+        return SAVE_CORRUPT;
+    }
     for (index = 0; index < len; index++)
-        bytes[index] = 0;
-    return 0;
+        bytes[index] = sram[index + SAVE_HEADER_BYTES];
+    DISABLE_RAM;
+    return SAVE_OK;
 }
 
-void save_write(const void *src, uint8_t len) {
+save_result_t save_write(uint8_t version, const void *src, uint8_t len) {
     const uint8_t *bytes = src;
     uint8_t index;
     volatile uint8_t *sram;
 
     if (len == 0)
-        return;
+        return SAVE_BAD_ARGUMENT;
 
     ENABLE_RAM;
     sram = SRAM_BASE;
     sram[0] = SAVE_MAGIC;
-    sram[1] = bytes[0];
-    for (index = 1; index < len; index++)
-        sram[index + SAVE_HEADER_BYTES - 1U] = bytes[index];
+    sram[1] = version;
+    sram[2] = checksum(bytes, len);
+    for (index = 0; index < len; index++)
+        sram[index + SAVE_HEADER_BYTES] = bytes[index];
     DISABLE_RAM;
+    return SAVE_OK;
 }
 
 void save_wipe(void) {
@@ -57,6 +71,5 @@ void save_wipe(void) {
     ENABLE_RAM;
     sram = SRAM_BASE;
     sram[0] = 0;
-    sram[1] = 0;
     DISABLE_RAM;
 }

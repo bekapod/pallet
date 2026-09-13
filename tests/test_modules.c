@@ -16,6 +16,7 @@
 #include "rng.h"
 #include "save.h"
 #include "seq.h"
+#include "status.h"
 #include "shake.h"
 #include "scroll.h"
 #include "state.h"
@@ -132,46 +133,52 @@ uint8_t joypad(void) {
 }
 
 static void test_save(void) {
-    uint8_t saved[] = {3, 0x12, 0x34, 0x56};
+    uint8_t saved[] = {0x12, 0x34, 0x56};
     uint8_t loaded[sizeof(saved)];
     uint8_t index;
 
     memset(fake_sram, 0, sizeof(fake_sram));
     test_ram_enabled = 0;
+
+    /* Missing save: typed failure, caller data untouched. */
     memset(loaded, 0xCC, sizeof(loaded));
-    loaded[0] = 3;
-    assert(save_load(loaded, sizeof(loaded)) == 0);
+    assert(save_load(3, loaded, sizeof(loaded)) == SAVE_MISSING);
     for (index = 0; index < sizeof(loaded); index++)
-        assert(loaded[index] == 0);
+        assert(loaded[index] == 0xCC);
     assert(test_ram_enabled == 0);
 
-    save_write(saved, sizeof(saved));
+    /* Valid save: version owned by the caller's argument, not the data. */
+    save_write(3, saved, sizeof(saved));
     assert(test_ram_enabled == 0);
     assert(fake_sram[0] == SAVE_MAGIC);
-    assert(fake_sram[1] == saved[0]);
-    loaded[0] = saved[0];
-    assert(save_load(loaded, sizeof(loaded)) == 1);
+    assert(fake_sram[1] == 3);
+    assert(save_load(3, loaded, sizeof(loaded)) == SAVE_OK);
     assert(memcmp(loaded, saved, sizeof(saved)) == 0);
     assert(test_ram_enabled == 0);
 
-    loaded[0] = 4;
-    memset(&loaded[1], 0xCC, sizeof(loaded) - 1);
-    assert(save_load(loaded, sizeof(loaded)) == 0);
+    /* Wrong version: typed failure, caller data untouched. */
+    memset(loaded, 0xCC, sizeof(loaded));
+    assert(save_load(4, loaded, sizeof(loaded)) == SAVE_BAD_VERSION);
     for (index = 0; index < sizeof(loaded); index++)
-        assert(loaded[index] == 0);
+        assert(loaded[index] == 0xCC);
+
+    /* Corrupt payload: checksum catches it, caller data untouched. */
+    fake_sram[SAVE_HEADER_BYTES] ^= 0xFF;
+    assert(save_load(3, loaded, sizeof(loaded)) == SAVE_CORRUPT);
+    for (index = 0; index < sizeof(loaded); index++)
+        assert(loaded[index] == 0xCC);
+    fake_sram[SAVE_HEADER_BYTES] ^= 0xFF;
+
+    /* Zero length is rejected. */
+    assert(save_load(3, loaded, 0) == SAVE_BAD_ARGUMENT);
+    assert(save_write(3, saved, 0) == SAVE_BAD_ARGUMENT);
     assert(test_ram_enabled == 0);
 
+    /* Wipe makes the next load miss. */
     save_wipe();
     assert(test_ram_enabled == 0);
-    loaded[0] = 3;
-    assert(save_load(loaded, sizeof(loaded)) == 0);
+    assert(save_load(3, loaded, sizeof(loaded)) == SAVE_MISSING);
     assert(test_ram_enabled == 0);
-
-    fake_sram[0] = SAVE_MAGIC;
-    fake_sram[1] = 3;
-    save_write(0, 0);
-    assert(test_ram_enabled == 0);
-    assert(fake_sram[0] == SAVE_MAGIC && fake_sram[1] == 3);
 }
 
 static void test_rng(void) {
