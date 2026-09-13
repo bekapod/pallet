@@ -7,7 +7,7 @@
 #include "text.h"
 
 typedef struct {
-    const char *const *items;
+    const menu_item_t *items;
     uint8_t flags[MENU_MAX_ITEMS];
     uint8_t item_count;
     uint8_t x;
@@ -46,7 +46,7 @@ static void draw_item(uint8_t item) {
         text_window_print(0U, item, "-");
     else
         text_window_print(0U, item, " ");
-    text_window_print(1U, item, menu->items[item]);
+    text_window_print(1U, item, menu->items[item].text);
 }
 
 static void move_cursor(void) {
@@ -82,13 +82,8 @@ static void hide_menu(void) {
     }
 }
 
-void menu_open(const char *const *items, uint8_t item_count, uint8_t x,
+void menu_open(const menu_item_t *items, uint8_t item_count, uint8_t x,
                uint8_t y) {
-    menu_open_ex(items, 0, item_count, x, y);
-}
-
-void menu_open_ex(const char *const *items, const uint8_t *flags,
-                  uint8_t item_count, uint8_t x, uint8_t y) {
     menu_state_t next = {0};
     uint8_t item;
 
@@ -102,8 +97,8 @@ void menu_open_ex(const char *const *items, const uint8_t *flags,
     next.x = x;
     next.y = y;
     for (item = 0; item < item_count; item++) {
-        uint8_t width = string_width(items[item]);
-        next.flags[item] = flags ? flags[item] : 0;
+        uint8_t width = string_width(items[item].text);
+        next.flags[item] = items[item].flags;
         if (width > next.width)
             next.width = width;
     }
@@ -118,14 +113,18 @@ void menu_open_ex(const char *const *items, const uint8_t *flags,
     draw_menu();
 }
 
-uint8_t menu_tick(void) {
+menu_event_t menu_tick(void) {
+    menu_event_t event;
     uint8_t up;
     uint8_t left;
     uint8_t down;
     uint8_t right;
 
-    if (!menu_depth)
-        return MENU_NONE;
+    event.item = 0;
+    if (!menu_depth) {
+        event.action = MENU_NONE;
+        return event;
+    }
 
     up = input_repeat(J_UP, 15U, 6U);
     left = input_repeat(J_LEFT, 15U, 6U);
@@ -144,10 +143,14 @@ uint8_t menu_tick(void) {
         move_cursor();
     }
 
+    event.item = active_menu.selected;
     if (input_pressed & J_A) {
-        if (active_menu.flags[active_menu.selected] & MENU_ITEM_DISABLED)
-            return MENU_DENIED;
-        return MENU_CONFIRM;
+        if (active_menu.flags[active_menu.selected] & MENU_ITEM_DISABLED) {
+            event.action = MENU_DENIED;
+            return event;
+        }
+        event.action = MENU_CONFIRM;
+        return event;
     }
 
     if (input_pressed & J_B) {
@@ -158,10 +161,12 @@ uint8_t menu_tick(void) {
             draw_menu();
         } else
             hide_menu();
-        return MENU_CANCEL;
+        event.action = MENU_CANCEL;
+        return event;
     }
 
-    return MENU_NONE;
+    event.action = MENU_NONE;
+    return event;
 }
 
 void menu_close(void) {
@@ -173,7 +178,7 @@ void menu_close(void) {
 }
 
 uint8_t menu_selected(void) {
-    return menu_depth ? active_menu.selected : 0;
+    return menu_depth ? active_menu.selected : MENU_NO_MENU;
 }
 
 void menu_set_flag(uint8_t item, uint8_t flags) {

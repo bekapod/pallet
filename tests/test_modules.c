@@ -692,21 +692,21 @@ static void test_spr(void) {
         assert(sprite_x[index] == 0 && sprite_y[index] == 0);
 }
 
-static uint8_t menu_tick_with(uint8_t buttons) {
+static menu_event_t menu_tick_with(uint8_t buttons) {
     joypad_value = buttons;
     input_update();
     return menu_tick();
 }
 
 static void test_menu_navigation_and_flags(void) {
-    static const char *const items[] = {"START", "SOUND", "EXIT"};
-    static const uint8_t flags[] = {0, 0, MENU_ITEM_DISABLED};
+    static const menu_item_t items[] = {
+        {"START", 0}, {"SOUND", 0}, {"EXIT", MENU_ITEM_DISABLED}};
     uint8_t frame;
 
     spr_reset();
     memset(win_tiles, 0xFF, sizeof(win_tiles));
     LCDC_REG = 0;
-    menu_open_ex(items, flags, 3, 3, 4);
+    menu_open(items, 3, 3, 4);
     text_vblank();
     assert(LCDC_REG & 0x20U);
     assert(win_tiles[0][0] == TEXT_EMPTY_TILE);
@@ -717,61 +717,61 @@ static void test_menu_navigation_and_flags(void) {
     assert(sprite_x[0] == 32);
     assert(sprite_y[0] == 48);
 
-    assert(menu_tick_with(J_UP) == MENU_NONE);
+    assert(menu_tick_with(J_UP).action == MENU_NONE);
     assert(menu_selected() == 2);
     assert(sprite_y[0] == 64);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 0);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 1);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_LEFT) == MENU_NONE);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_LEFT).action == MENU_NONE);
     assert(menu_selected() == 0);
     for (frame = 0; frame < 14; frame++)
-        assert(menu_tick_with(J_LEFT) == MENU_NONE);
+        assert(menu_tick_with(J_LEFT).action == MENU_NONE);
     assert(menu_selected() == 0);
-    assert(menu_tick_with(J_LEFT) == MENU_NONE);
+    assert(menu_tick_with(J_LEFT).action == MENU_NONE);
     assert(menu_selected() == 2);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 0);
     for (frame = 0; frame < 14; frame++)
-        assert(menu_tick_with(J_DOWN) == MENU_NONE);
+        assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 0);
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 1);
     for (frame = 0; frame < 5; frame++)
-        assert(menu_tick_with(J_DOWN) == MENU_NONE);
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+        assert(menu_tick_with(J_DOWN).action == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 2);
 
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_A) == MENU_DENIED);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_A).action == MENU_DENIED);
     menu_set_flag(2, 0);
     text_vblank();
     assert(win_tiles[2][0] == TEXT_EMPTY_TILE);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_A) == MENU_CONFIRM);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_A).action == MENU_CONFIRM);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_B).action == MENU_CANCEL);
     assert(!(LCDC_REG & 0x20U));
     assert(sprite_x[0] == 0 && sprite_y[0] == 0);
 }
 
 static void test_menu_parent_stack(void) {
-    static const char *const root[] = {"ROOT", "SECOND"};
-    static const char *const child[] = {"CHILD"};
-    static const char *const grandchild[] = {"GRAND"};
-    static const char *const rejected[] = {"REJECTED"};
+    static const menu_item_t root[] = {{"ROOT", 0}, {"SECOND", 0}};
+    static const menu_item_t child[] = {{"CHILD", 0}};
+    static const menu_item_t grandchild[] = {{"GRAND", 0}};
+    static const menu_item_t rejected[] = {{"REJECTED", 0}};
 
     spr_reset();
     menu_open(root, 2, 1, 1);
     text_vblank();
-    assert(menu_tick_with(J_DOWN) == MENU_NONE);
+    assert(menu_tick_with(J_DOWN).action == MENU_NONE);
     assert(menu_selected() == 1);
-    assert(menu_tick_with(0) == MENU_NONE);
+    assert(menu_tick_with(0).action == MENU_NONE);
 
     menu_open(child, 1, 5, 5);
     text_vblank();
@@ -787,15 +787,15 @@ static void test_menu_parent_stack(void) {
     assert(win_x == 63 && win_y == 56);
     assert(win_tiles[0][1] == font_tile(16)); /* G */
 
-    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_tick_with(J_B).action == MENU_CANCEL);
     assert(menu_selected() == 0);
     assert(win_x == 47 && win_y == 40);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_B).action == MENU_CANCEL);
     assert(menu_selected() == 1);
     assert(win_x == 15 && win_y == 8);
-    assert(menu_tick_with(0) == MENU_NONE);
-    assert(menu_tick_with(J_B) == MENU_CANCEL);
+    assert(menu_tick_with(0).action == MENU_NONE);
+    assert(menu_tick_with(J_B).action == MENU_CANCEL);
     assert(!(LCDC_REG & 0x20U));
 
     menu_open(root, 0, 1, 1);
