@@ -8,6 +8,7 @@
 #include "flash.h"
 #include "input.h"
 #include "menu.h"
+#include "rng.h"
 #include "seq.h"
 #include "shake.h"
 #include "text.h"
@@ -81,6 +82,38 @@ static uint8_t joypad_value;
 
 uint8_t joypad(void) {
     return joypad_value;
+}
+
+static void test_rng(void) {
+    rng_t first;
+    rng_t second;
+    rng_t zero;
+    uint16_t first_values[4];
+    uint8_t index;
+
+    rng_init(&first, 0x1234);
+    rng_init(&second, 0x1234);
+    for (index = 0; index < 4; index++) {
+        first_values[index] = rng_next(&first);
+        assert(first_values[index] == rng_next(&second));
+    }
+
+    rng_init(&first, 0x1234);
+    rng_init(&second, 0x5678);
+    assert(rng_next(&first) == first_values[0]);
+    assert(rng_next(&second) != first_values[0]);
+    assert(rng_next(&first) == first_values[1]);
+
+    rng_init(&zero, 0);
+    assert(rng_next(&zero) != 0);
+    assert(rng_range(&zero, 0) == 0);
+    for (index = 0; index < 32; index++)
+        assert(rng_range(&zero, 17) < 17);
+
+    rng_init(&zero, 1);
+    assert(rng_chance(&zero, 0) == 0);
+    assert(rng_chance(&zero, 100) == 1);
+    assert(rng_chance(&zero, 255) == 1);
 }
 
 static void test_blink(void) {
@@ -407,6 +440,7 @@ static void test_input_edges(void) {
 }
 
 int main(void) {
+    test_rng();
     test_blink();
     test_fade();
     test_sequence();
