@@ -3,6 +3,7 @@
 
 #include "bg.h"
 #include "blink.h"
+#include "camera.h"
 #include "fade.h"
 #include "flash.h"
 #include "fx.h"

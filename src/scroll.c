@@ -56,10 +56,6 @@ void scroll_tick(void) {
     }
 }
 
-void scroll_apply(void) {
-    SCX_REG = scroll_px();
-}
-
 uint8_t scroll_px(void) {
     return (uint8_t)(scroll_x >> 8);
 }

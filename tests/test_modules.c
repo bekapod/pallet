@@ -5,6 +5,7 @@
 
 #include "bg.h"
 #include "blink.h"
+#include "camera.h"
 #include "fade.h"
 #include "flash.h"
 #include "fx.h"
@@ -307,17 +308,64 @@ static void test_sequence(void) {
     assert(!seq_busy());
 }
 
-static void test_shake(void) {
+/* Scroll and shake both want to move the screen. The camera combines
+ * them and writes the scroll registers once, so they can't overwrite
+ * each other. */
+static void test_camera(void) {
     SCX_REG = 9;
     SCY_REG = 8;
-    shake(2, 3);
+    camera_set_y(4);
+    camera_apply();
+    assert(SCX_REG == 0);
+    assert(SCY_REG == 4);
+
+    scroll_set_on_column(0);
+    scroll_set_speed(0x0100);
+    scroll_reset(0);
+    scroll_tick();
+    camera_apply();
+    assert(SCX_REG == 1);
+    assert(SCY_REG == 4);
+
+    /* Shake composes around the current base without resetting it. */
+    camera_shake(3, 3);
+    camera_tick();
+    camera_apply();
+    assert(SCX_REG == (uint8_t)(1 + 3) || SCX_REG == (uint8_t)(1 - 3));
+    assert(SCY_REG == (uint8_t)(4 + 3) || SCY_REG == (uint8_t)(4 - 3));
+    assert(shake_active);
+
+    /* Scrolling continues while shaking. */
+    scroll_tick();
+    camera_tick();
+    camera_apply();
+    assert(SCX_REG == (uint8_t)(2 + 3) || SCX_REG == (uint8_t)(2 - 3));
+
+    /* The shake ends on the last duration frame and restores the base. */
+    camera_tick();
+    camera_apply();
+    assert(SCX_REG == 2);
+    assert(SCY_REG == 4);
+    assert(!shake_active);
+
+    /* Zero-length shake clears offsets immediately. */
+    camera_shake(0, 3);
+    camera_apply();
+    assert(SCX_REG == 2);
+    assert(SCY_REG == 4);
+}
+
+static void test_shake(void) {
+    shake_offset_x = 0;
+    shake_offset_y = 0;
+    camera_shake(2, 3);
     shake_tick();
-    assert(SCX_REG == 3);
-    assert(SCY_REG == (uint8_t)-3);
+    assert(shake_offset_x == 3 || shake_offset_x == (int8_t)-3);
+    assert(shake_offset_y == 3 || shake_offset_y == (int8_t)-3);
     assert(shake_active);
     shake_tick();
-    assert(SCX_REG == 0);
-    assert(SCY_REG == 0);
+    assert(shake_offset_x == 0);
+    assert(shake_offset_y == 0);
     assert(!shake_active);
 }
 
@@ -424,7 +472,7 @@ static void test_scroll(void) {
         assert(scroll_world_columns[index] == index);
     }
     assert(scroll_x == 0 && scroll_px() == 0 && scroll_col() == 0);
-    scroll_apply();
+    camera_apply();
     assert(SCX_REG == 0);
     for (index = 0; index < 8; index++)
         scroll_tick();
@@ -996,6 +1044,7 @@ int main(void) {
     test_blink();
     test_fade();
     test_sequence();
+    test_camera();
     test_shake();
     test_flash();
     test_bg();

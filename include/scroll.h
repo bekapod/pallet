@@ -15,7 +15,6 @@ extern uint16_t scroll_x;
 void scroll_set_on_column(scroll_column_callback_t callback);
 void scroll_set_speed(uint16_t speed);
 void scroll_tick(void);
-void scroll_apply(void);
 uint8_t scroll_px(void);
 uint8_t scroll_col(void);
 void scroll_reset(uint8_t world_col);

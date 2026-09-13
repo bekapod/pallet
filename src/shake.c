@@ -1,4 +1,3 @@
-#include <gb/gb.h>
 #include <stdint.h>
 
 #include "shake.h"
@@ -8,6 +7,8 @@ static uint8_t amplitude;
 static uint8_t phase;
 
 uint8_t shake_active;
+int8_t shake_offset_x;
+int8_t shake_offset_y;
 
 void shake(uint8_t duration, uint8_t requested_amplitude) {
     frames = duration;
@@ -15,8 +16,8 @@ void shake(uint8_t duration, uint8_t requested_amplitude) {
     phase = 0;
     shake_active = duration != 0;
     if (!shake_active) {
-        SCX_REG = 0;
-        SCY_REG = 0;
+        shake_offset_x = 0;
+        shake_offset_y = 0;
     }
 }
 
@@ -25,17 +26,17 @@ void shake_tick(void) {
         return;
 
     if (phase) {
-        SCX_REG = (uint8_t)(-(int8_t)amplitude);
-        SCY_REG = amplitude;
+        shake_offset_x = (int8_t)-amplitude;
+        shake_offset_y = (int8_t)amplitude;
     } else {
-        SCX_REG = amplitude;
-        SCY_REG = (uint8_t)(-(int8_t)amplitude);
+        shake_offset_x = (int8_t)amplitude;
+        shake_offset_y = (int8_t)-amplitude;
     }
     phase ^= 1;
     if (--frames)
         return;
 
     shake_active = 0;
-    SCX_REG = 0;
-    SCY_REG = 0;
+    shake_offset_x = 0;
+    shake_offset_y = 0;
 }
