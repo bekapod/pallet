@@ -120,12 +120,12 @@ uint8_t menu_tick(void) {
             active_menu.selected--;
         else
             active_menu.selected = active_menu.item_count - 1U;
-        draw_menu();
+        move_cursor();
     } else if (down) {
         active_menu.selected++;
         if (active_menu.selected == active_menu.item_count)
             active_menu.selected = 0;
-        draw_menu();
+        move_cursor();
     }
 
     if (input_pressed & J_A) {
