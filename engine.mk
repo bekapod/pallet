@@ -2,6 +2,11 @@ ENGINE := $(dir $(lastword $(MAKEFILE_LIST)))
 BUILD ?= build
 ROM ?= game
 GBDK_HOME ?= $(HOME)/gbdk/
+ifeq ($(wildcard $(GBDK_HOME)/bin/lcc),)
+ifneq ($(wildcard /opt/gbdk/bin/lcc),)
+GBDK_HOME := /opt/gbdk/
+endif
+endif
 LCC := $(GBDK_HOME)/bin/lcc
 PNG2ASSET := $(GBDK_HOME)/bin/png2asset
 TOOLS_DIR ?= $(CURDIR)/.tools
