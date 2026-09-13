@@ -56,6 +56,7 @@ static void queue_tile(uint8_t x, uint8_t y, uint8_t tile, uint8_t window) {
 void text_init(const uint8_t *font_tiles) {
     set_bkg_data(TEXT_EMPTY_TILE, 1, empty_tile);
     set_bkg_data(TEXT_TILE_BASE, TEXT_FONT_TILES, font_tiles);
+    set_sprite_data(TEXT_SPRITE_TILE_BASE, TEXT_FONT_TILES, font_tiles);
     set_sprite_data(TEXT_CURSOR_TILE, 1U,
                     font_tiles + (TEXT_FONT_TILES - 1U) * 16U);
     write_count = 0;
@@ -98,4 +99,12 @@ void text_digits(uint8_t x, uint8_t y, uint16_t value, uint8_t width) {
                    TEXT_TILE_BASE + (uint8_t)(value % 10), 0);
         value /= 10;
     } while (value);
+}
+
+uint8_t text_sprite_tile(char character) {
+    uint8_t tile = glyph_tile(character);
+
+    if (tile == TEXT_EMPTY_TILE)
+        return TEXT_EMPTY_TILE;
+    return TEXT_SPRITE_TILE_BASE + tile - TEXT_TILE_BASE;
 }

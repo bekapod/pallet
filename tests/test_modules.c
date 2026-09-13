@@ -41,6 +41,9 @@ const void *font_data;
 uint8_t sprite_data_start;
 uint8_t sprite_data_count;
 const uint8_t *sprite_data;
+uint8_t sprite_font_start;
+uint8_t sprite_font_count;
+const uint8_t *sprite_font_data;
 
 void sfx_tick(void) {
 }
@@ -53,9 +56,15 @@ void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
 
 void set_sprite_data(uint8_t first_tile, uint8_t nb_tiles,
                      const uint8_t *data) {
-    sprite_data_start = first_tile;
-    sprite_data_count = nb_tiles;
-    sprite_data = data;
+    if (nb_tiles == TEXT_FONT_TILES) {
+        sprite_font_start = first_tile;
+        sprite_font_count = nb_tiles;
+        sprite_font_data = data;
+    } else {
+        sprite_data_start = first_tile;
+        sprite_data_count = nb_tiles;
+        sprite_data = data;
+    }
 }
 
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
@@ -474,9 +483,15 @@ static void test_text(void) {
     assert(font_start == TEXT_TILE_BASE);
     assert(font_count == TEXT_FONT_TILES);
     assert(font_data == font);
-    assert(sprite_data_start == 0xFEU);
+    assert(sprite_font_start == TEXT_SPRITE_TILE_BASE);
+    assert(sprite_font_count == TEXT_FONT_TILES);
+    assert(sprite_font_data == font);
+    assert(sprite_data_start == TEXT_CURSOR_TILE);
     assert(sprite_data_count == 1U);
     assert(sprite_data == font + (TEXT_FONT_TILES - 1U) * 16U);
+    assert(text_sprite_tile('S') == TEXT_SPRITE_TILE_BASE + 28U);
+    assert(text_sprite_tile('>') == TEXT_SPRITE_TILE_BASE + 39U);
+    assert(text_sprite_tile(' ') == TEXT_EMPTY_TILE);
 
     text_print(0, 0, "0aZ!/- >");
     assert(bkg_tiles[0][0] == 0xFF);
