@@ -16,6 +16,8 @@
 
 extern uint8_t BGP_REG;
 extern uint8_t OBP0_REG;
+extern uint8_t SCX_REG;
+extern uint8_t SCY_REG;
 extern uint8_t OBP1_REG;
 extern uint8_t LCDC_REG;
 
