@@ -13,6 +13,7 @@
 #include "save.h"
 #include "seq.h"
 #include "shake.h"
+#include "scroll.h"
 #include "state.h"
 #include "spr.h"
 #include "text.h"
@@ -376,6 +377,83 @@ static void test_bg(void) {
     for (uint8_t y = 0; y < 18; y++)
         for (uint8_t x = 0; x < 20; x++)
             assert(bkg_tiles[y][x] == 11);
+}
+
+static uint8_t scroll_map_columns[64];
+static uint8_t scroll_world_columns[64];
+static unsigned scroll_callback_count;
+
+static void record_scroll_column(uint8_t map_col, uint8_t world_col) {
+    scroll_map_columns[scroll_callback_count] = map_col;
+    scroll_world_columns[scroll_callback_count++] = world_col;
+}
+
+static void test_scroll(void) {
+    unsigned index;
+
+    memset(scroll_map_columns, 0, sizeof(scroll_map_columns));
+    memset(scroll_world_columns, 0, sizeof(scroll_world_columns));
+    scroll_callback_count = 0;
+    scroll_set_on_column(record_scroll_column);
+    scroll_set_speed(0x0100);
+    scroll_reset(0);
+    assert(scroll_callback_count == 21U);
+    for (index = 0; index <= SCROLL_VIEW_COLUMNS; index++) {
+        assert(scroll_map_columns[index] == (index & 31U));
+        assert(scroll_world_columns[index] == index);
+    }
+    assert(scroll_x == 0 && scroll_px() == 0 && scroll_col() == 0);
+    scroll_apply();
+    assert(SCX_REG == 0);
+    for (index = 0; index < 8; index++)
+        scroll_tick();
+    assert(scroll_px() == 8 && scroll_col() == 1);
+    assert(scroll_callback_count == 22U);
+    assert(scroll_map_columns[21] == 21 && scroll_world_columns[21] == 21);
+
+    scroll_callback_count = 0;
+    scroll_set_speed(0x0180);
+    scroll_reset(0);
+    scroll_callback_count = 21U;
+    for (index = 0; index < 8; index++)
+        scroll_tick();
+    assert(scroll_x == 0x0C00 && scroll_px() == 12);
+    assert(scroll_world_columns[21] == 21);
+
+    scroll_callback_count = 0;
+    scroll_set_speed(0x1900);
+    scroll_reset(0);
+    scroll_callback_count = 21U;
+    scroll_tick();
+    assert(scroll_callback_count == 24U);
+    assert(scroll_world_columns[21] == 21);
+    assert(scroll_world_columns[22] == 22);
+    assert(scroll_world_columns[23] == 23);
+
+    scroll_set_speed(0x0100);
+    scroll_reset(40);
+    scroll_pause();
+    {
+        uint16_t phase = scroll_x;
+        unsigned count = scroll_callback_count;
+        for (index = 0; index < 120; index++)
+            scroll_tick();
+        assert(scroll_x == phase && scroll_callback_count == count);
+    }
+    scroll_resume();
+    scroll_tick();
+    assert(scroll_x == (uint16_t)(40U * 8U * 256U + 0x0100U));
+    scroll_reset(40);
+
+    assert(scroll_world_to_screen(40U * 8U * 256U) == 0);
+    assert(scroll_world_to_screen(40U * 8U * 256U + 159U * 256U) == 159);
+    assert(scroll_world_to_screen(40U * 8U * 256U - 256U) == SCROLL_OFFSCREEN);
+    assert(scroll_world_to_screen(40U * 8U * 256U + 160U * 256U) == SCROLL_OFFSCREEN);
+    assert(scroll_world_to_screen(8U * 256U) == SCROLL_OFFSCREEN);
+
+    scroll_set_on_column(0);
+    scroll_reset(0);
+    scroll_tick();
 }
 
 static void test_text(void) {
@@ -870,6 +948,7 @@ int main(void) {
     test_shake();
     test_flash();
     test_bg();
+    test_scroll();
     test_text();
     test_spr();
     test_menu_navigation_and_flags();
