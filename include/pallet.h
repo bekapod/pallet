@@ -5,6 +5,8 @@
 #include "blink.h"
 #include "fade.h"
 #include "flash.h"
+#include "fx.h"
+#include "hit.h"
 #include "input.h"
 #include "music.h"
 #include "menu.h"
