@@ -182,10 +182,34 @@ static void test_input_edges(void) {
     assert(input_released == J_UP);
 }
 
+static void test_input_repeat(void) {
+    uint8_t frame;
+
+    joypad_value = 0;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    joypad_value = J_RIGHT;
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+    for (frame = 0; frame < 14; frame++) {
+        input_update();
+        assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    }
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+    for (frame = 0; frame < 5; frame++) {
+        input_update();
+        assert(input_repeat(J_RIGHT, 15, 6) == 0);
+    }
+    input_update();
+    assert(input_repeat(J_RIGHT, 15, 6) == 1);
+}
+
 int main(void) {
     test_blink();
     test_fade();
     test_text();
     test_input_edges();
+    test_input_repeat();
     return 0;
 }
