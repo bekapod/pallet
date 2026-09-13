@@ -9,6 +9,7 @@
 #include "input.h"
 #include "menu.h"
 #include "rng.h"
+#include "save.h"
 #include "seq.h"
 #include "shake.h"
 #include "text.h"
@@ -19,6 +20,8 @@ uint8_t OBP1_REG;
 uint8_t LCDC_REG;
 uint8_t SCX_REG;
 uint8_t SCY_REG;
+uint8_t fake_sram[8192];
+uint8_t test_ram_enabled;
 uint8_t bkg_tiles[32][32];
 uint8_t win_tiles[32][32];
 uint8_t win_x;
@@ -82,6 +85,49 @@ static uint8_t joypad_value;
 
 uint8_t joypad(void) {
     return joypad_value;
+}
+
+static void test_save(void) {
+    uint8_t saved[] = {3, 0x12, 0x34, 0x56};
+    uint8_t loaded[sizeof(saved)];
+    uint8_t index;
+
+    memset(fake_sram, 0, sizeof(fake_sram));
+    test_ram_enabled = 0;
+    memset(loaded, 0xCC, sizeof(loaded));
+    loaded[0] = 3;
+    assert(save_load(loaded, sizeof(loaded)) == 0);
+    for (index = 0; index < sizeof(loaded); index++)
+        assert(loaded[index] == 0);
+    assert(test_ram_enabled == 0);
+
+    save_write(saved, sizeof(saved));
+    assert(test_ram_enabled == 0);
+    assert(fake_sram[0] == SAVE_MAGIC);
+    assert(fake_sram[1] == saved[0]);
+    loaded[0] = saved[0];
+    assert(save_load(loaded, sizeof(loaded)) == 1);
+    assert(memcmp(loaded, saved, sizeof(saved)) == 0);
+    assert(test_ram_enabled == 0);
+
+    loaded[0] = 4;
+    memset(&loaded[1], 0xCC, sizeof(loaded) - 1);
+    assert(save_load(loaded, sizeof(loaded)) == 0);
+    for (index = 0; index < sizeof(loaded); index++)
+        assert(loaded[index] == 0);
+    assert(test_ram_enabled == 0);
+
+    save_wipe();
+    assert(test_ram_enabled == 0);
+    loaded[0] = 3;
+    assert(save_load(loaded, sizeof(loaded)) == 0);
+    assert(test_ram_enabled == 0);
+
+    fake_sram[0] = SAVE_MAGIC;
+    fake_sram[1] = 3;
+    save_write(0, 0);
+    assert(test_ram_enabled == 0);
+    assert(fake_sram[0] == SAVE_MAGIC && fake_sram[1] == 3);
 }
 
 static void test_rng(void) {
@@ -440,6 +486,7 @@ static void test_input_edges(void) {
 }
 
 int main(void) {
+    test_save();
     test_rng();
     test_blink();
     test_fade();

@@ -20,6 +20,12 @@ extern uint8_t SCX_REG;
 extern uint8_t SCY_REG;
 extern uint8_t OBP1_REG;
 extern uint8_t LCDC_REG;
+extern uint8_t fake_sram[8192];
+extern uint8_t test_ram_enabled;
+
+#define ENABLE_RAM (test_ram_enabled = 1)
+#define DISABLE_RAM (test_ram_enabled = 0)
+#define PALLET_HOST_SRAM ((volatile uint8_t *)fake_sram)
 
 void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data);
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile);
