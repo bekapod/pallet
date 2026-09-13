@@ -12,6 +12,7 @@ uint8_t BGP_REG;
 uint8_t OBP0_REG;
 uint8_t OBP1_REG;
 uint8_t bkg_tiles[32][32];
+uint8_t win_tiles[32][32];
 uint8_t font_start;
 uint8_t font_count;
 const void *font_data;
@@ -25,6 +26,11 @@ void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
     bkg_tiles[y][x] = tile;
     return &bkg_tiles[y][x];
+}
+
+uint8_t *set_win_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
+    win_tiles[y][x] = tile;
+    return &win_tiles[y][x];
 }
 
 enum {
@@ -132,6 +138,10 @@ static void test_text(void) {
     assert(bkg_tiles[0][5] == font_tile(FONT_HYPHEN));
     assert(bkg_tiles[0][6] == TEXT_EMPTY_TILE);
     assert(bkg_tiles[0][7] == font_tile(FONT_GREATER_THAN));
+
+    text_window_print(4, 5, "A");
+    text_vblank();
+    assert(win_tiles[5][4] == font_tile(FONT_LETTER_A));
 
     text_digits(0, 1, 9, 3);
     text_vblank();

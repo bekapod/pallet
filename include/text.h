@@ -19,7 +19,12 @@
 
 void text_init(const uint8_t *font_tiles);
 void text_vblank(void);
+
+/* Queue text for the background tile map; text_vblank() applies it. */
 void text_print(uint8_t x, uint8_t y, const char *text);
+
+/* Queue text for the window tile map; text_vblank() applies it. */
+void text_window_print(uint8_t x, uint8_t y, const char *text);
 void text_digits(uint8_t x, uint8_t y, uint16_t value, uint8_t width);
 
 #endif
