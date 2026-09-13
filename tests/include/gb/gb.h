@@ -10,6 +10,8 @@
 #define J_DOWN 0x08U
 #define J_A 0x10U
 #define J_B 0x20U
+#define J_SELECT 0x40U
+#define J_START 0x80U
 
 #define SHOW_WIN (LCDC_REG |= 0x20U)
 #define HIDE_WIN (LCDC_REG &= (uint8_t)~0x20U)

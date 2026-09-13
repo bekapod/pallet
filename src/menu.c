@@ -144,7 +144,7 @@ menu_event_t menu_tick(void) {
     }
 
     event.item = active_menu.selected;
-    if (input_pressed & J_A) {
+    if (input_pressed(J_A)) {
         if (active_menu.flags[active_menu.selected] & MENU_ITEM_DISABLED) {
             event.action = MENU_DENIED;
             return event;
@@ -153,7 +153,7 @@ menu_event_t menu_tick(void) {
         return event;
     }
 
-    if (input_pressed & J_B) {
+    if (input_pressed(J_B)) {
         clear_menu(&active_menu);
         menu_depth--;
         if (menu_depth) {

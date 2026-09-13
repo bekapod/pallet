@@ -981,9 +981,6 @@ static void test_state_stack(void) {
 static void test_input_edges(void) {
     uint16_t frame;
 
-    input_held = 0;
-    input_pressed = 0;
-    input_released = 0;
     joypad_value = 0;
     input_update();
 
@@ -993,26 +990,30 @@ static void test_input_edges(void) {
     assert(input_held_frames(J_A) == 1);
     assert(input_held_frames(J_B) == 1);
     assert(input_held_frames(J_A | J_B) == 0);
-    assert(input_held == (J_A | J_B | J_RIGHT | J_UP));
-    assert(input_pressed == (J_A | J_B | J_RIGHT | J_UP));
-    assert(input_released == 0);
+    assert(input_held(J_A | J_B | J_RIGHT | J_UP));
+    assert(input_pressed(J_A) && input_pressed(J_B));
+    assert(input_pressed(J_RIGHT) && input_pressed(J_UP));
+    assert(!input_pressed(J_START));
+    assert(!input_released(J_A));
 
     /* Keep up held and release right. */
     joypad_value = J_A | J_UP;
     input_update();
     assert(input_held_frames(J_A) == 2);
     assert(input_held_frames(J_B) == 0);
-    assert(input_held == (J_A | J_UP));
-    assert(input_pressed == 0);
-    assert(input_released == (J_B | J_RIGHT));
+    assert(input_held(J_A | J_UP));
+    assert(!input_held(J_B));
+    assert(!input_pressed(J_A));
+    assert(input_released(J_B) && input_released(J_RIGHT));
+    assert(!input_released(J_A));
 
     /* Release the remaining up button. */
     joypad_value = 0;
     input_update();
     assert(input_held_frames(J_A) == 0);
     assert(input_held_frames(J_B) == 0);
-    assert(input_pressed == 0);
-    assert(input_released == (J_A | J_UP));
+    assert(!input_pressed(J_A));
+    assert(input_released(J_A) && input_released(J_UP));
 
     joypad_value = J_A;
     input_update();
