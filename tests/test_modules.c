@@ -3,6 +3,7 @@
 #include <string.h>
 #include <gb/gb.h>
 
+#include "bg.h"
 #include "blink.h"
 #include "fade.h"
 #include "flash.h"
@@ -45,6 +46,17 @@ void set_bkg_data(uint8_t first_tile, uint8_t nb_tiles, const void *data) {
 uint8_t *set_bkg_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
     bkg_tiles[y][x] = tile;
     return &bkg_tiles[y][x];
+}
+
+void set_bkg_tiles(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
+                   const uint8_t *tiles) {
+    uint8_t row;
+    uint8_t column;
+
+    for (row = 0; row < h; row++) {
+        for (column = 0; column < w; column++)
+            bkg_tiles[y + row][x + column] = tiles[row * w + column];
+    }
 }
 
 uint8_t *set_win_tile_xy(uint8_t x, uint8_t y, uint8_t tile) {
@@ -296,6 +308,68 @@ static void test_flash(void) {
     assert(OBP1_REG == 0x56);
 }
 
+static void test_bg(void) {
+    static const uint8_t row_tiles[] = {1, 2, 3};
+    static const uint8_t column_tiles[] = {4, 5, 6};
+    static const uint8_t long_column_tiles[18] = {0};
+    uint8_t frame;
+
+    memset(bkg_tiles, 0xFF, sizeof(bkg_tiles));
+    bg_put(0, 0, 7);
+    bg_put(1, 0, 8);
+    assert(bkg_tiles[0][0] == 0xFF && bkg_tiles[0][1] == 0xFF);
+    assert(bg_pending() == 2U);
+    bg_flush();
+    assert(bkg_tiles[0][0] == 7 && bkg_tiles[0][1] == 8);
+    assert(bg_pending() == 0U);
+
+    bg_put_row(31, 4, row_tiles, 3);
+    bg_put_col(7, 31, column_tiles, 3);
+    assert(bg_pending() == 6U);
+    bg_flush();
+    assert(bkg_tiles[4][31] == 1 && bkg_tiles[4][0] == 2 &&
+           bkg_tiles[4][1] == 3);
+    assert(bkg_tiles[31][7] == 4 && bkg_tiles[0][7] == 5 &&
+           bkg_tiles[1][7] == 6);
+    assert(bg_pending() == 0U);
+
+    bg_put_col(2, 0, long_column_tiles, 18);
+    for (frame = 0; frame < 6; frame++)
+        bg_put((uint8_t)(10 + frame), 2, 9);
+    assert(bg_pending() == 24U);
+    bg_flush();
+    assert(bg_pending() == 0U);
+    assert(bkg_tiles[17][2] == long_column_tiles[17]);
+    assert(bkg_tiles[2][15] == 9);
+
+    bg_put_row(0, 6, row_tiles, 3);
+    /* A 32-entry row must retain its tail after the first budgeted flush. */
+    {
+        static uint8_t long_row[32];
+        for (frame = 0; frame < 32; frame++)
+            long_row[frame] = frame;
+        bg_put_row(0, 6, long_row, 32);
+        bg_flush();
+        assert(bg_pending() == 11U);
+        bg_flush();
+        assert(bg_pending() == 0U);
+        for (frame = 0; frame < 32; frame++)
+            assert(bkg_tiles[6][frame] == frame);
+    }
+
+    memset(bkg_tiles, 0xFF, sizeof(bkg_tiles));
+    bg_fill(0, 0, 20, 18, 11);
+    assert(bg_pending() == 360U);
+    for (frame = 1; bg_pending(); frame++) {
+        bg_flush();
+        assert(frame <= 15);
+    }
+    assert(frame == 16);
+    for (uint8_t y = 0; y < 18; y++)
+        for (uint8_t x = 0; x < 20; x++)
+            assert(bkg_tiles[y][x] == 11);
+}
+
 static void test_text(void) {
     static const uint8_t font[TEXT_FONT_TILES] = {0};
 
@@ -306,7 +380,11 @@ static void test_text(void) {
     assert(font_data == font);
 
     text_print(0, 0, "0aZ!/- >");
+    assert(bkg_tiles[0][0] == 0xFF);
+    assert(bg_pending() == 8U);
     text_vblank();
+    assert(bg_pending() == 8U);
+    bg_flush();
     assert(bkg_tiles[0][0] == font_tile(FONT_DIGIT_0));
     assert(bkg_tiles[0][1] == font_tile(FONT_LETTER_A));
     assert(bkg_tiles[0][2] == font_tile(FONT_LETTER_Z));
@@ -322,12 +400,14 @@ static void test_text(void) {
 
     text_digits(0, 1, 9, 3);
     text_vblank();
+    bg_flush();
     assert(bkg_tiles[1][0] == TEXT_EMPTY_TILE);
     assert(bkg_tiles[1][1] == TEXT_EMPTY_TILE);
     assert(bkg_tiles[1][2] == font_tile(9));
 
     text_digits(0, 2, 65535, 5);
     text_vblank();
+    bg_flush();
     assert(bkg_tiles[2][0] == font_tile(6));
     assert(bkg_tiles[2][1] == font_tile(5));
     assert(bkg_tiles[2][2] == font_tile(5));
@@ -336,6 +416,7 @@ static void test_text(void) {
 
     text_digits(0, 3, 1000, 5);
     text_vblank();
+    bg_flush();
     assert(bkg_tiles[3][0] == TEXT_EMPTY_TILE);
     assert(bkg_tiles[3][1] == font_tile(1));
     assert(bkg_tiles[3][2] == font_tile(FONT_DIGIT_0));
@@ -493,6 +574,7 @@ int main(void) {
     test_sequence();
     test_shake();
     test_flash();
+    test_bg();
     test_text();
     test_menu_navigation_and_flags();
     test_menu_parent_stack();

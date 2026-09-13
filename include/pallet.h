@@ -1,6 +1,7 @@
 #ifndef PALLET_H
 #define PALLET_H
 
+#include "bg.h"
 #include "blink.h"
 #include "fade.h"
 #include "flash.h"
