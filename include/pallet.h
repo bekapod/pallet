@@ -16,6 +16,7 @@
 #include "shake.h"
 #include "spr.h"
 #include "text.h"
+#include "timer.h"
 #include "vblank.h"
 
 #endif
